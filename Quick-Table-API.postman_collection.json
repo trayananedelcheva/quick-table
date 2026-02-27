@@ -1,0 +1,543 @@
+{
+  "info": {
+    "name": "Quick Table API",
+    "description": "Микросервизна система за резервация на маси в ресторанти",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "user_service_url",
+      "value": "http://localhost:8081",
+      "description": "User Service - Authentication & Authorization"
+    },
+    {
+      "key": "restaurant_service_url",
+      "value": "http://localhost:8082",
+      "description": "Restaurant Service - Restaurant & Table Management"
+    },
+    {
+      "key": "reservation_service_url",
+      "value": "http://localhost:8083",
+      "description": "Reservation Service - Booking Management"
+    },
+    {
+      "key": "jwt_token",
+      "value": "",
+      "description": "JWT Token (auto-set from Login response)"
+    }
+  ],
+  "item": [
+    {
+      "name": "User Service",
+      "item": [
+        {
+          "name": "Register Client",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"client@example.com\",\n  \"password\": \"password123\",\n  \"firstName\": \"Иван\",\n  \"lastName\": \"Иванов\",\n  \"phoneNumber\": \"0888123456\"\n}"
+            },
+            "url": {
+              "raw": "{{user_service_url}}/api/auth/register",
+              "host": ["{{user_service_url}}"],
+              "path": ["api", "auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set(\"jwt_token\", jsonData.token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@quicktable.com\",\n  \"password\": \"admin123\"\n}"
+            },
+            "url": {
+              "raw": "{{user_service_url}}/api/auth/login",
+              "host": ["{{user_service_url}}"],
+              "path": ["api", "auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Get My Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{user_service_url}}/api/users/me",
+              "host": ["{{user_service_url}}"],
+              "path": ["api", "users", "me"]
+            }
+          }
+        },
+        {
+          "name": "Update User Role (ADMIN only)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{user_service_url}}/api/users/2/role?role=RESTAURANT_ADMIN",
+              "host": ["{{user_service_url}}"],
+              "path": ["api", "users", "2", "role"],
+              "query": [
+                {
+                  "key": "role",
+                  "value": "RESTAURANT_ADMIN",
+                  "description": "CLIENT | RESTAURANT_ADMIN | SYSTEM_ADMIN"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get All Users (ADMIN only)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{user_service_url}}/api/users",
+              "host": ["{{user_service_url}}"],
+              "path": ["api", "users"]
+            },
+            "description": "SYSTEM_ADMIN вижда всички потребители в системата"
+          }
+        },
+        {
+          "name": "Get Users by Role (ADMIN only)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{user_service_url}}/api/users?role=CLIENT",
+              "host": ["{{user_service_url}}"],
+              "path": ["api", "users"],
+              "query": [
+                {
+                  "key": "role",
+                  "value": "CLIENT",
+                  "description": "Филтър: CLIENT | RESTAURANT_ADMIN | SYSTEM_ADMIN"
+                }
+              ]
+            },
+            "description": "Филтриране на потребители по роля за User Management UI"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Restaurant Service",
+      "item": [
+        {
+          "name": "Create Restaurant",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ресторант Копитото\",\n  \"description\": \"Традиционна българска кухня\",\n  \"address\": \"ул. Витоша 15, София, България\",\n  \"phone\": \"+359 2 123 4567\",\n  \"email\": \"info@kopitoto.bg\",\n  \"openingTime\": \"10:00:00\",\n  \"closingTime\": \"23:00:00\",\n  \"tables\": [\n    {\n      \"tableNumber\": \"1\",\n      \"capacity\": 4,\n      \"location\": \"Вътре\"\n    },\n    {\n      \"tableNumber\": \"2\",\n      \"capacity\": 2,\n      \"location\": \"До прозорец\"\n    },\n    {\n      \"tableNumber\": \"3\",\n      \"capacity\": 6,\n      \"location\": \"Тераса\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{restaurant_service_url}}/api/restaurants",
+              "host": ["{{restaurant_service_url}}"],
+              "path": ["api", "restaurants"]
+            },
+            "description": "Създаване на нов ресторант. Изисква RESTAURANT_ADMIN или SYSTEM_ADMIN роля. adminUserId се взема автоматично от JWT токена."
+          }
+        },
+        {
+          "name": "Get My Restaurants",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{restaurant_service_url}}/api/restaurants/my",
+              "host": ["{{restaurant_service_url}}"],
+              "path": ["api", "restaurants", "my"]
+            },
+            "description": "Връща всички ресторанти на текущия потребител. userId се взема автоматично от JWT токена."
+          }
+        },
+        {
+          "name": "Get All Restaurants",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{restaurant_service_url}}/api/restaurants",
+              "host": ["{{restaurant_service_url}}"],
+              "path": ["api", "restaurants"]
+            }
+          }
+        },
+        {
+          "name": "Get Restaurant by ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{restaurant_service_url}}/api/restaurants/1",
+              "host": ["{{restaurant_service_url}}"],
+              "path": ["api", "restaurants", "1"]
+            }
+          }
+        },
+        {
+          "name": "Search by City",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{restaurant_service_url}}/api/restaurants?city=София",
+              "host": ["{{restaurant_service_url}}"],
+              "path": ["api", "restaurants"],
+              "query": [
+                {
+                  "key": "city",
+                  "value": "София"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Add Table",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tableNumber\": \"4\",\n  \"capacity\": 8,\n  \"location\": \"Зала за събития\"\n}"
+            },
+            "url": {
+              "raw": "{{restaurant_service_url}}/api/restaurants/1/tables",
+              "host": ["{{restaurant_service_url}}"],
+              "path": ["api", "restaurants", "1", "tables"]
+            },
+            "description": "Добавяне на маса към ресторант. Изисква SYSTEM_ADMIN или собственик на ресторанта."
+          }
+        },
+        {
+          "name": "Update Restaurant Hours (ADMIN only)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{restaurant_service_url}}/api/restaurants/1/hours?openingTime=09:00:00&closingTime=22:00:00",
+              "host": ["{{restaurant_service_url}}"],
+              "path": ["api", "restaurants", "1", "hours"],
+              "query": [
+                {
+                  "key": "openingTime",
+                  "value": "09:00:00",
+                  "description": "Час на отваряне (HH:mm:ss)"
+                },
+                {
+                  "key": "closingTime",
+                  "value": "22:00:00",
+                  "description": "Час на затваряне (HH:mm:ss)"
+                }
+              ]
+            },
+            "description": "Променя работното време на ресторант. SYSTEM_ADMIN може да променя всички, RESTAURANT_ADMIN - само свои. userId и role се извличат автоматично от JWT."
+          }
+        },
+        {
+          "name": "Update Table Availability (ADMIN only)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{restaurant_service_url}}/api/restaurants/tables/3/availability?available=false",
+              "host": ["{{restaurant_service_url}}"],
+              "path": ["api", "restaurants", "tables", "3", "availability"],
+              "query": [
+                {
+                  "key": "available",
+                  "value": "false",
+                  "description": "true = отваря маса, false = затваря маса"
+                }
+              ]
+            },
+            "description": "Затваря/отваря маса за резервации. SYSTEM_ADMIN може да управлява всички маси, RESTAURANT_ADMIN - само свои. userId и role се извличат автоматично от JWT."
+          }
+        },
+        {
+          "name": "Delete Restaurant (Soft)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{restaurant_service_url}}/api/restaurants/1",
+              "host": ["{{restaurant_service_url}}"],
+              "path": ["api", "restaurants", "1"]
+            },
+            "description": "Soft delete - само маркира ресторанта като неактивен (active=false). SYSTEM_ADMIN може да трие всички, RESTAURANT_ADMIN - само свои. userId и role се извличат автоматично от JWT."
+          }
+        },
+        {
+          "name": "Delete Restaurant (Hard/Permanent)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{restaurant_service_url}}/api/restaurants/1?permanent=true",
+              "host": ["{{restaurant_service_url}}"],
+              "path": ["api", "restaurants", "1"],
+              "query": [
+                {
+                  "key": "permanent",
+                  "value": "true",
+                  "description": "true = изтрива окончателно от БД, false/липсва = soft delete"
+                }
+              ]
+            },
+            "description": "Hard delete - окончателно изтрива ресторанта от базата данни заедно с всички маси. SYSTEM_ADMIN може да трие всички, RESTAURANT_ADMIN - само свои. userId и role се извличат автоматично от JWT."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reservation Service",
+      "item": [
+        {
+          "name": "Get Available Time Slots",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{reservation_service_url}}/api/reservations/restaurant/1/available-slots?date=2026-03-15&guestsCount=4&location=Тераса",
+              "host": ["{{reservation_service_url}}"],
+              "path": ["api", "reservations", "restaurant", "1", "available-slots"],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "2026-03-15",
+                  "description": "Дата във формат YYYY-MM-DD"
+                },
+                {
+                  "key": "guestsCount",
+                  "value": "4",
+                  "description": "Брой гости"
+                },
+                {
+                  "key": "location",
+                  "value": "Тераса",
+                  "description": "Предпочитана локация: Вътре, Тераса, Градина, ANY"
+                }
+              ]
+            },
+            "description": "Показва само свободни часове за дадена дата, брой гости и локация. CLIENT НЕ вижда номера/детайли за маси. Inter-service комуникация с restaurant-service."
+          }
+        },
+        {
+          "name": "Create Reservation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"restaurantId\": 1,\n  \"reservationDate\": \"2026-03-15\",\n  \"reservationTime\": \"19:00:00\",\n  \"guestsCount\": 4,\n  \"locationPreference\": \"Тераса\",\n  \"specialRequests\": \"Алергия към ядки\",\n  \"customerName\": \"Иван Иванов\",\n  \"customerPhone\": \"0888123456\",\n  \"customerEmail\": \"ivan@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{reservation_service_url}}/api/reservations?userId=1&userRole=CLIENT",
+              "host": ["{{reservation_service_url}}"],
+              "path": ["api", "reservations"],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "1"
+                },
+                {
+                  "key": "userRole",
+                  "value": "CLIENT",
+                  "description": "BUSINESS RULE: Само CLIENT може да прави резервации (не RESTAURANT_ADMIN)"
+                }
+              ]
+            },
+            "description": "Създаване на резервация БЕЗ tableId - системата автоматично избира подходяща маса според guestsCount и locationPreference. Inter-service комуникация: reservation-service -> restaurant-service. Ако userRole=RESTAURANT_ADMIN → грешка 400"
+          }
+        },
+        {
+          "name": "Get My Reservations",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{reservation_service_url}}/api/reservations/my?userId=1",
+              "host": ["{{reservation_service_url}}"],
+              "path": ["api", "reservations", "my"],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Restaurant Reservations (ADMIN only)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{reservation_service_url}}/api/reservations/restaurant/1?adminUserId=2",
+              "host": ["{{reservation_service_url}}"],
+              "path": ["api", "reservations", "restaurant", "1"],
+              "query": [
+                {
+                  "key": "adminUserId",
+                  "value": "2",
+                  "description": "Валидация: само собственикът вижда резервациите"
+                }
+              ]
+            },
+            "description": "RESTAURANT_ADMIN вижда всички резервации за СВОЙ ресторант"
+          }
+        },
+        {
+          "name": "Update Status",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"CONFIRMED\"\n}"
+            },
+            "url": {
+              "raw": "{{reservation_service_url}}/api/reservations/1/status",
+              "host": ["{{reservation_service_url}}"],
+              "path": ["api", "reservations", "1", "status"]
+            }
+          }
+        },
+        {
+          "name": "Cancel Reservation",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{reservation_service_url}}/api/reservations/1",
+              "host": ["{{reservation_service_url}}"],
+              "path": ["api", "reservations", "1"]
+            }
+          }
+        },
+        {
+          "name": "Check Availability",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{reservation_service_url}}/api/reservations/restaurant/1/availability?date=2026-03-15",
+              "host": ["{{reservation_service_url}}"],
+              "path": ["api", "reservations", "restaurant", "1", "availability"],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "2026-03-15"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
