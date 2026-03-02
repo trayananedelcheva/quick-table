@@ -1,8 +1,11 @@
 package com.quicktable.restaurantservice.service;
 
+import com.quicktable.common.dto.TableCategory;
 import com.quicktable.restaurantservice.dto.*;
+import com.quicktable.restaurantservice.entity.CategoryAvailability;
 import com.quicktable.restaurantservice.entity.Restaurant;
 import com.quicktable.restaurantservice.entity.RestaurantTable;
+import com.quicktable.restaurantservice.repository.CategoryAvailabilityRepository;
 import com.quicktable.restaurantservice.repository.RestaurantRepository;
 import com.quicktable.restaurantservice.repository.RestaurantTableRepository;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +25,7 @@ public class RestaurantService {
 
     private final RestaurantRepository restaurantRepository;
     private final RestaurantTableRepository tableRepository;
+    private final CategoryAvailabilityRepository categoryAvailabilityRepository;
     private final GeocodingService geocodingService;
 
     @Transactional
@@ -60,7 +64,7 @@ public class RestaurantService {
                         .restaurant(restaurant)
                         .tableNumber(tableRequest.getTableNumber())
                         .capacity(tableRequest.getCapacity())
-                        .location(tableRequest.getLocation())
+                        .category(tableRequest.getCategory())
                         .available(true)
                         .build();
                 restaurant.getTables().add(table);
@@ -69,6 +73,16 @@ public class RestaurantService {
 
         restaurant = restaurantRepository.save(restaurant);
         log.info("Ресторант създаден с ID: {}", restaurant.getId());
+
+        // Автоматично създаване на CategoryAvailability записи за всички категории
+        for (TableCategory category : TableCategory.values()) {
+            CategoryAvailability categoryAvailability = CategoryAvailability.builder()
+                    .restaurant(restaurant)
+                    .category(category)
+                    .enabled(true) // По подразбиране всички категории са активни
+                    .build();
+            categoryAvailabilityRepository.save(categoryAvailability);
+        }
 
         return mapToResponse(restaurant, true);
     }
@@ -192,7 +206,7 @@ public class RestaurantService {
                 .restaurant(restaurant)
                 .tableNumber(request.getTableNumber())
                 .capacity(request.getCapacity())
-                .location(request.getLocation())
+                .category(request.getCategory())
                 .available(true)
                 .build();
 
@@ -272,11 +286,10 @@ public class RestaurantService {
     }
 
     @Transactional
-    public TableResponse updateTableAvailability(Long tableId, Long userId, String userRole, Boolean available) {
-        RestaurantTable table = tableRepository.findById(tableId)
-                .orElseThrow(() -> new RuntimeException("Маса не е намерена"));
-
-        Restaurant restaurant = table.getRestaurant();
+    public TableResponse updateTableAvailability(Long restaurantId, String tableNumber, Long userId, String userRole, Boolean available) {
+        // Намираме ресторанта първо за да проверим правата
+        Restaurant restaurant = restaurantRepository.findById(restaurantId)
+                .orElseThrow(() -> new RuntimeException("Ресторант не е намерен"));
 
         // BUSINESS RULE: SYSTEM_ADMIN или собственик могат да променят наличността на маси
         boolean isSystemAdmin = "SYSTEM_ADMIN".equals(userRole);
@@ -286,10 +299,14 @@ public class RestaurantService {
             throw new RuntimeException("Нямате права да променяте маси на този ресторант");
         }
 
+        // Търсим масата по ресторант + номер
+        RestaurantTable table = tableRepository.findByRestaurantIdAndTableNumber(restaurantId, tableNumber)
+                .orElseThrow(() -> new RuntimeException("Маса с номер " + tableNumber + " не е намерена в този ресторант"));
+
         table.setAvailable(available);
         table = tableRepository.save(table);
 
-        log.info("Променена наличност на маса {}: {}", tableId, available);
+        log.info("Променена наличност на маса #{} в ресторант {}: {}", tableNumber, restaurantId, available);
 
         return mapToTableResponse(table);
     }
@@ -329,8 +346,66 @@ public class RestaurantService {
                 .id(table.getId())
                 .tableNumber(table.getTableNumber())
                 .capacity(table.getCapacity())
-                .location(table.getLocation())
+                .category(table.getCategory())
                 .available(table.getAvailable())
                 .build();
+    }
+
+    // ==================== УПРАВЛЕНИЕ НА КАТЕГОРИИ ====================
+
+    @Transactional
+    public void toggleCategoryAvailability(Long restaurantId, TableCategory category, Boolean enabled, 
+                                          Long userId, String userRole) {
+        Restaurant restaurant = restaurantRepository.findById(restaurantId)
+                .orElseThrow(() -> new RuntimeException("Ресторант не е намерен"));
+
+        // BUSINESS RULE: SYSTEM_ADMIN или собствениkът могат да управляват категории
+        boolean isSystemAdmin = "SYSTEM_ADMIN".equals(userRole);
+        boolean isRestaurantAdmin = "RESTAURANT_ADMIN".equals(userRole);
+        boolean isOwner = restaurant.getAdminUserId().equals(userId);
+
+        if (!isSystemAdmin && !(isRestaurantAdmin && isOwner)) {
+            throw new RuntimeException("Нямате права да управлявате категории за този ресторант");
+        }
+
+        CategoryAvailability categoryAvailability = categoryAvailabilityRepository
+                .findByRestaurantIdAndCategory(restaurantId, category)
+                .orElseGet(() -> {
+                    // Ако няма запис, създаваме нов
+                    CategoryAvailability newEntry = CategoryAvailability.builder()
+                            .restaurant(restaurant)
+                            .category(category)
+                            .enabled(enabled)
+                            .build();
+                    return categoryAvailabilityRepository.save(newEntry);
+                });
+
+        categoryAvailability.setEnabled(enabled);
+        categoryAvailabilityRepository.save(categoryAvailability);
+
+        log.info("Категория {} за ресторант {} е {} от потребител {}", 
+                category, restaurantId, enabled ? "активирана" : "деактивирана", userId);
+    }
+
+    public List<com.quicktable.restaurantservice.dto.CategoryAvailabilityResponse> getCategoryAvailability(Long restaurantId) {
+        return categoryAvailabilityRepository.findByRestaurantId(restaurantId).stream()
+                .map(this::mapToCategoryAvailabilityResponse)
+                .collect(java.util.stream.Collectors.toList());
+    }
+
+    private com.quicktable.restaurantservice.dto.CategoryAvailabilityResponse mapToCategoryAvailabilityResponse(CategoryAvailability entity) {
+        return com.quicktable.restaurantservice.dto.CategoryAvailabilityResponse.builder()
+                .id(entity.getId())
+                .restaurantId(entity.getRestaurant().getId())
+                .category(entity.getCategory())
+                .enabled(entity.getEnabled())
+                .build();
+    }
+
+    public boolean isCategoryEnabled(Long restaurantId, TableCategory category) {
+        return categoryAvailabilityRepository
+                .findByRestaurantIdAndCategory(restaurantId, category)
+                .map(CategoryAvailability::getEnabled)
+                .orElse(true); // По подразбиране категориите са активни
     }
 }

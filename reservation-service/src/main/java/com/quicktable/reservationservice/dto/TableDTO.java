@@ -1,5 +1,6 @@
 package com.quicktable.reservationservice.dto;
 
+import com.quicktable.common.dto.TableCategory;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -16,6 +17,6 @@ public class TableDTO {
     private Long id;
     private String tableNumber;
     private Integer capacity;
-    private String location; // "Вътре", "Тераса", "Градина", etc.
+    private TableCategory category;
     private Boolean available;
 }

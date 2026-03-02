@@ -147,15 +147,46 @@ public class RestaurantController {
         return ResponseEntity.ok(availableSlots);
     }
 
-    @PutMapping("/tables/{tableId}/availability")
+    @PutMapping("/{restaurantId}/tables/{tableNumber}/availability")
     public ResponseEntity<TableResponse> updateTableAvailability(
             HttpServletRequest request,
-            @PathVariable Long tableId,
+            @PathVariable Long restaurantId,
+            @PathVariable String tableNumber,
             @RequestParam Boolean available
     ) {
         Long userId = getUserIdFromRequest(request);
         String userRole = getUserRoleFromRequest(request);
-        TableResponse response = restaurantService.updateTableAvailability(tableId, userId, userRole, available);
+        TableResponse response = restaurantService.updateTableAvailability(restaurantId, tableNumber, userId, userRole, available);
         return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/{id}/categories/{category}/toggle")
+    public ResponseEntity<Void> toggleCategoryAvailability(
+            HttpServletRequest request,
+            @PathVariable Long id,
+            @PathVariable String category,
+            @RequestParam Boolean enabled
+    ) {
+        Long userId = getUserIdFromRequest(request);
+        String userRole = getUserRoleFromRequest(request);
+        
+        com.quicktable.common.dto.TableCategory tableCategory;
+        try {
+            tableCategory = com.quicktable.common.dto.TableCategory.valueOf(category.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        }
+        
+        restaurantService.toggleCategoryAvailability(id, tableCategory, enabled, userId, userRole);
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/{id}/categories")
+    public ResponseEntity<List<com.quicktable.restaurantservice.dto.CategoryAvailabilityResponse>> getCategoryAvailability(
+            @PathVariable Long id
+    ) {
+        List<com.quicktable.restaurantservice.dto.CategoryAvailabilityResponse> categories = 
+                restaurantService.getCategoryAvailability(id);
+        return ResponseEntity.ok(categories);
     }
 }

@@ -10,11 +10,10 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class TableResponse {
-
+public class CategoryAvailabilityResponse {
+    
     private Long id;
-    private String tableNumber;
-    private Integer capacity;
+    private Long restaurantId;
     private TableCategory category;
-    private Boolean available;
+    private Boolean enabled;
 }

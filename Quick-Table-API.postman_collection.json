@@ -188,7 +188,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Ресторант Копитото\",\n  \"description\": \"Традиционна българска кухня\",\n  \"address\": \"ул. Витоша 15, София, България\",\n  \"phone\": \"+359 2 123 4567\",\n  \"email\": \"info@kopitoto.bg\",\n  \"openingTime\": \"10:00:00\",\n  \"closingTime\": \"23:00:00\",\n  \"tables\": [\n    {\n      \"tableNumber\": \"1\",\n      \"capacity\": 4,\n      \"location\": \"Вътре\"\n    },\n    {\n      \"tableNumber\": \"2\",\n      \"capacity\": 2,\n      \"location\": \"До прозорец\"\n    },\n    {\n      \"tableNumber\": \"3\",\n      \"capacity\": 6,\n      \"location\": \"Тераса\"\n    }\n  ]\n}"
+              "raw": "{\n  \"name\": \"Ресторант Копитото\",\n  \"description\": \"Традиционна българска кухня\",\n  \"address\": \"ул. Витоша 15, София, България\",\n  \"phone\": \"+359 2 123 4567\",\n  \"email\": \"info@kopitoto.bg\",\n  \"openingTime\": \"10:00:00\",\n  \"closingTime\": \"23:00:00\",\n  \"tables\": [\n    {\n      \"tableNumber\": \"1\",\n      \"capacity\": 4,\n      \"category\": \"INSIDE\"\n    },\n    {\n      \"tableNumber\": \"2\",\n      \"capacity\": 2,\n      \"category\": \"INSIDE\"\n    },\n    {\n      \"tableNumber\": \"3\",\n      \"capacity\": 6,\n      \"category\": \"SUMMER_GARDEN\"\n    },\n    {\n      \"tableNumber\": \"4\",\n      \"capacity\": 4,\n      \"category\": \"WINTER_GARDEN\"\n    }\n  ]\n}"
             },
             "url": {
               "raw": "{{restaurant_service_url}}/api/restaurants",
@@ -271,7 +271,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"tableNumber\": \"4\",\n  \"capacity\": 8,\n  \"location\": \"Зала за събития\"\n}"
+              "raw": "{\n  \"tableNumber\": \"5\",\n  \"capacity\": 8,\n  \"category\": \"INSIDE\"\n}"
             },
             "url": {
               "raw": "{{restaurant_service_url}}/api/restaurants/1/tables",
@@ -322,9 +322,9 @@
               }
             ],
             "url": {
-              "raw": "{{restaurant_service_url}}/api/restaurants/tables/3/availability?available=false",
+              "raw": "{{restaurant_service_url}}/api/restaurants/1/tables/3/availability?available=false",
               "host": ["{{restaurant_service_url}}"],
-              "path": ["api", "restaurants", "tables", "3", "availability"],
+              "path": ["api", "restaurants", "1", "tables", "3", "availability"],
               "query": [
                 {
                   "key": "available",
@@ -333,7 +333,7 @@
                 }
               ]
             },
-            "description": "Затваря/отваря маса за резервации. SYSTEM_ADMIN може да управлява всички маси, RESTAURANT_ADMIN - само свои. userId и role се извличат автоматично от JWT."
+            "description": "Затваря/отваря маса за резервации по НОМЕР (не ID!). SYSTEM_ADMIN може да управлява всички маси, RESTAURANT_ADMIN - само свои. userId и role се извличат автоматично от JWT. Endpoint формат: /restaurants/{restaurantId}/tables/{tableNumber}/availability"
           }
         },
         {
@@ -378,6 +378,60 @@
             },
             "description": "Hard delete - окончателно изтрива ресторанта от базата данни заедно с всички маси. SYSTEM_ADMIN може да трие всички, RESTAURANT_ADMIN - само свои. userId и role се извличат автоматично от JWT."
           }
+        },
+        {
+          "name": "Get Category Availability",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{restaurant_service_url}}/api/restaurants/1/categories/availability",
+              "host": ["{{restaurant_service_url}}"],
+              "path": ["api", "restaurants", "1", "categories", "availability"]
+            },
+            "description": "Показва статуса (enabled/disabled) на всички категории маси за даден ресторант. Всеки може да види."
+          }
+        },
+        {
+          "name": "Enable Category",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{restaurant_service_url}}/api/restaurants/1/categories/SUMMER_GARDEN/enable",
+              "host": ["{{restaurant_service_url}}"],
+              "path": ["api", "restaurants", "1", "categories", "SUMMER_GARDEN", "enable"]
+            },
+            "description": "Отваря категория маси за резервации. Използва се за сезонно управление (напр. отваряне на лятна градина през лятото). SYSTEM_ADMIN може да управлява всички, RESTAURANT_ADMIN - само свои."
+          }
+        },
+        {
+          "name": "Disable Category",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{restaurant_service_url}}/api/restaurants/1/categories/WINTER_GARDEN/disable",
+              "host": ["{{restaurant_service_url}}"],
+              "path": ["api", "restaurants", "1", "categories", "WINTER_GARDEN", "disable"]
+            },
+            "description": "Затваря категория маси за резервации. Използва се за сезонно управление (напр. затваряне на зимна градина през лятото). SYSTEM_ADMIN може да управлява всички, RESTAURANT_ADMIN - само свои."
+          }
         }
       ]
     },
@@ -389,7 +443,7 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{reservation_service_url}}/api/reservations/restaurant/1/available-slots?date=2026-03-15&guestsCount=4&location=Тераса",
+              "raw": "{{reservation_service_url}}/api/reservations/restaurant/1/available-slots?date=2026-03-15&guestsCount=4&category=SUMMER_GARDEN",
               "host": ["{{reservation_service_url}}"],
               "path": ["api", "reservations", "restaurant", "1", "available-slots"],
               "query": [
@@ -404,13 +458,13 @@
                   "description": "Брой гости"
                 },
                 {
-                  "key": "location",
-                  "value": "Тераса",
-                  "description": "Предпочитана локация: Вътре, Тераса, Градина, ANY"
+                  "key": "category",
+                  "value": "SUMMER_GARDEN",
+                  "description": "Категория маса: INSIDE, SUMMER_GARDEN, WINTER_GARDEN (незадължително)"
                 }
               ]
             },
-            "description": "Показва само свободни часове за дадена дата, брой гости и локация. CLIENT НЕ вижда номера/детайли за маси. Inter-service комуникация с restaurant-service."
+            "description": "Показва само свободни часове за дадена дата, брой гости и категория маси. CLIENT НЕ вижда номера/детайли за маси. Inter-service комуникация с restaurant-service. category е незадължително."
           }
         },
         {
@@ -425,7 +479,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"restaurantId\": 1,\n  \"reservationDate\": \"2026-03-15\",\n  \"reservationTime\": \"19:00:00\",\n  \"guestsCount\": 4,\n  \"locationPreference\": \"Тераса\",\n  \"specialRequests\": \"Алергия към ядки\",\n  \"customerName\": \"Иван Иванов\",\n  \"customerPhone\": \"0888123456\",\n  \"customerEmail\": \"ivan@example.com\"\n}"
+              "raw": "{\n  \"restaurantId\": 1,\n  \"reservationDate\": \"2026-03-15\",\n  \"reservationTime\": \"19:00:00\",\n  \"guestsCount\": 4,\n  \"preferredCategory\": \"SUMMER_GARDEN\",\n  \"specialRequests\": \"Алергия към ядки\",\n  \"customerName\": \"Иван Иванов\",\n  \"customerPhone\": \"0888123456\",\n  \"customerEmail\": \"ivan@example.com\"\n}"
             },
             "url": {
               "raw": "{{reservation_service_url}}/api/reservations?userId=1&userRole=CLIENT",
@@ -443,7 +497,7 @@
                 }
               ]
             },
-            "description": "Създаване на резервация БЕЗ tableId - системата автоматично избира подходяща маса според guestsCount и locationPreference. Inter-service комуникация: reservation-service -> restaurant-service. Ако userRole=RESTAURANT_ADMIN → грешка 400"
+            "description": "Създаване на резервация БЕЗ tableId - системата автоматично избира случайна подходяща маса според guestsCount и preferredCategory. Inter-service комуникация: reservation-service -> restaurant-service. Ако userRole=RESTAURANT_ADMIN → грешка 400. preferredCategory е незадължително - ако липсва, системата избира от всички налични категории."
           }
         },
         {

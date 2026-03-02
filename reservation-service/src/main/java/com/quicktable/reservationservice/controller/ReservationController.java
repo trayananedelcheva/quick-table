@@ -1,6 +1,7 @@
 package com.quicktable.reservationservice.controller;
 
 import com.quicktable.common.dto.ReservationStatus;
+import com.quicktable.common.dto.TableCategory;
 import com.quicktable.reservationservice.dto.ReservationRequest;
 import com.quicktable.reservationservice.dto.ReservationResponse;
 import com.quicktable.reservationservice.dto.UpdateReservationStatusRequest;
@@ -89,11 +90,21 @@ public class ReservationController {
             @PathVariable Long restaurantId,
             @RequestParam String date, // YYYY-MM-DD
             @RequestParam Integer guestsCount,
-            @RequestParam(required = false, defaultValue = "ANY") String location // "Вътре", "Тераса", "ANY"
+            @RequestParam(required = false) String category // "INSIDE", "SUMMER_GARDEN", "WINTER_GARDEN"
     ) {
         java.time.LocalDate reservationDate = java.time.LocalDate.parse(date);
+        
+        TableCategory tableCategory = null;
+        if (category != null && !category.isEmpty()) {
+            try {
+                tableCategory = TableCategory.valueOf(category.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                return ResponseEntity.badRequest().build();
+            }
+        }
+        
         List<String> availableSlots = reservationService.getAvailableTimeSlots(
-                restaurantId, reservationDate, guestsCount, location);
+                restaurantId, reservationDate, guestsCount, tableCategory);
         return ResponseEntity.ok(availableSlots);
     }
 }

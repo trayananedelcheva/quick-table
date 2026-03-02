@@ -1,5 +1,6 @@
 package com.quicktable.reservationservice.dto;
 
+import com.quicktable.common.dto.TableCategory;
 import com.quicktable.common.dto.UserRole;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
@@ -36,8 +37,8 @@ public class ReservationRequest {
     @Min(value = 1, message = "Броят гости трябва да е поне 1")
     private Integer guestsCount;
 
-    // Предпочитание за локация: "Вътре", "Тераса", "Градина", "ANY" (по подразбиране)
-    private String locationPreference; // Optional - ако е null, системата избира произволна локация
+    // Предпочитана категория: INSIDE, SUMMER_GARDEN, WINTER_GARDEN (optional)
+    private TableCategory preferredCategory; // Optional - ако е null, системата избира произволна категория
 
     private String specialRequests;
 

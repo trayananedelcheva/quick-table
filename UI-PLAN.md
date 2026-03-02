@@ -184,7 +184,9 @@ CLIENT вижда само:
 
 **API:** `GET /api/restaurants/{id}/tables`  
 **API:** `POST /api/restaurants/{id}/tables`  
-**API:** `PUT /api/restaurants/tables/{tableId}/availability?adminUserId={adminUserId}&available={true|false}`
+**API:** `PUT /api/restaurants/{restaurantId}/tables/{tableNumber}/availability?available={true|false}`
+
+**Забележка:** Използваме `tableNumber` (напр. "5"), не техническото database ID!
 
 #### 3.4. Restaurant Settings (`/admin/settings`)
 - Промяна на име

@@ -76,7 +76,7 @@
 - `PUT /api/reservations/{id}/status?status=REJECTED` - Откажи резервация
 - `PUT /api/restaurants/{id}/hours?adminUserId={id}&openingTime={time}&closingTime={time}` - Промени часове
 - `POST /api/restaurants/{id}/tables` - Добави маса
-- `PUT /api/restaurants/tables/{tableId}/availability?adminUserId={id}&available={bool}` - Отвори/затвори маса
+- `PUT /api/restaurants/{restaurantId}/tables/{tableNumber}/availability?available={bool}` - Отвори/затвори маса (по номер)
 - `PUT /api/restaurants/{id}?adminUserId={id}` - Промени детайли
 
 #### Валидация на собственост:

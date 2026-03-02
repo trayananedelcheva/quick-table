@@ -187,9 +187,13 @@ Quick Table е микросервизна система за **автомати
 - `GET /api/restaurants?city=София` - Филтриране по град
 - `GET /api/restaurants/{id}` - Детайли за ресторант
 - `PUT /api/restaurants/{id}` - Актуализация
+- `PUT /api/restaurants/{id}/hours` - Промяна на работно време
 - `DELETE /api/restaurants/{id}` - Деактивиране
 - `POST /api/restaurants/{id}/tables` - Добавяне на маса
 - `GET /api/restaurants/{id}/tables` - Маси на ресторант
+- `PUT /api/restaurants/tables/{id}/availability` - Затваряне/отваряне на маса
+- `PUT /api/restaurants/{id}/categories/{category}/toggle` - Затваряне/отваряне на категория
+- `GET /api/restaurants/{id}/categories` - Проверка статус на категории
 
 **База данни:** `quicktable_restaurants`
 
@@ -204,12 +208,13 @@ Quick Table е микросервизна система за **автомати
 - Проверка за конфликти при резервиране
 
 **Endpoints:**
-- `POST /api/reservations` - Създаване на резервация
+- `POST /api/reservations` - Създаване на резервация (с автоматичен избор на маса)
 - `GET /api/reservations/my` - Моите резервации
 - `GET /api/reservations/restaurant/{id}` - Резервации на ресторант
 - `PUT /api/reservations/{id}/status` - Промяна на статус
 - `DELETE /api/reservations/{id}` - Отмяна
 - `GET /api/reservations/restaurant/{id}/availability` - Наличност
+- `GET /api/reservations/restaurant/{id}/available-slots` - Свободни часове по категория
 
 **База данни:** `quicktable_reservations`
 
@@ -217,6 +222,7 @@ Quick Table е микросервизна система за **автомати
 **Споделени компоненти:**
 - `UserRole` enum - Роли на потребители
 - `ReservationStatus` enum - Статуси на резервации
+- `TableCategory` enum - Категории на маси (INSIDE, SUMMER_GARDEN, WINTER_GARDEN)
 - `ErrorResponse` DTO - Унифициран формат за грешки
 
 ---
@@ -441,10 +447,32 @@ CREATE TABLE restaurant_tables (
     restaurant_id BIGINT NOT NULL REFERENCES restaurants(id),
     table_number VARCHAR(50) NOT NULL,
     capacity INTEGER NOT NULL,
-    location VARCHAR(100),
+    category VARCHAR(50) NOT NULL, -- INSIDE, SUMMER_GARDEN, WINTER_GARDEN
     available BOOLEAN NOT NULL
 );
 ```
+
+**Category Availability (restaurant-service):**
+```sql
+CREATE TABLE category_availability (
+    id BIGSERIAL PRIMARY KEY,
+    restaurant_id BIGINT NOT NULL REFERENCES restaurants(id),
+    category VARCHAR(50) NOT NULL,
+    enabled BOOLEAN NOT NULL,
+    UNIQUE(restaurant_id, category)
+);
+```
+
+**Категории на маси:**
+- `INSIDE` - "Вътре"
+- `SUMMER_GARDEN` - "Лятна градина"
+- `WINTER_GARDEN` - "Зимна градина"
+
+**Логика:**
+- Всяка маса принадлежи към една категория
+- RESTAURANT_ADMIN може да затвори цяла категория (напр. Лятна градина през зимата)
+- При резервация, системата **автоматично избира random маса** от свободните в категорията
+- Това осигурява равномерно натоварване на масите
 
 **Reservations Table (reservation-service):**
 ```sql

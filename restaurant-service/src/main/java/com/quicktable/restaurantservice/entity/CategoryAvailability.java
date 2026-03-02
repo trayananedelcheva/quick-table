@@ -8,12 +8,13 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "restaurant_tables")
+@Table(name = "category_availability",
+       uniqueConstraints = @UniqueConstraint(columnNames = {"restaurant_id", "category"}))
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class RestaurantTable {
+public class CategoryAvailability {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -23,23 +24,17 @@ public class RestaurantTable {
     @JoinColumn(name = "restaurant_id", nullable = false)
     private Restaurant restaurant;
 
-    @Column(nullable = false)
-    private String tableNumber;
-
-    @Column(nullable = false)
-    private Integer capacity; // Брой места
-
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private TableCategory category; // Категория: INSIDE, TERRACE, VIP
+    private TableCategory category;
 
     @Column(nullable = false)
-    private Boolean available; // Дали масата е отворена (за ремонт и т.н.)
+    private Boolean enabled;
 
     @PrePersist
     protected void onCreate() {
-        if (available == null) {
-            available = true;
+        if (enabled == null) {
+            enabled = true;
         }
     }
 }

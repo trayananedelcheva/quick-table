@@ -1,5 +1,6 @@
 package com.quicktable.reservationservice.client;
 
+import com.quicktable.common.dto.TableCategory;
 import com.quicktable.reservationservice.dto.TableDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -38,17 +39,15 @@ public class RestaurantServiceClient {
     }
 
     /**
-     * Филтрира маси по капацитет, налично състояние и локация
+     * Филтрира маси по капацитет, налично състояние и категория
      */
-    public List<TableDTO> findAvailableTables(Long restaurantId, Integer guestsCount, String location) {
+    public List<TableDTO> findAvailableTables(Long restaurantId, Integer guestsCount, TableCategory category) {
         List<TableDTO> allTables = getRestaurantTables(restaurantId);
         
         return allTables.stream()
                 .filter(table -> table.getAvailable() != null && table.getAvailable())
                 .filter(table -> table.getCapacity() >= guestsCount)
-                .filter(table -> location == null || 
-                        location.equalsIgnoreCase("ANY") || 
-                        (table.getLocation() != null && table.getLocation().equalsIgnoreCase(location)))
+                .filter(table -> category == null || table.getCategory() == category)
                 .toList();
     }
 }

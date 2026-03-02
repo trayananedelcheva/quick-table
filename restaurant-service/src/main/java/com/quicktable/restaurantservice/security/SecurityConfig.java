@@ -23,12 +23,9 @@ public class SecurityConfig {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        // Публични endpoints - четене на ресторанти
-                        .requestMatchers(HttpMethod.GET, "/api/restaurants").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/restaurants/**").permitAll()
-                        
-                        // Всички останали изискват authentication
-                        .anyRequest().authenticated()
+                        // Всички endpoints са permitAll защото правим собствена проверка
+                        // чрез userId и userRole в сервизите
+                        .anyRequest().permitAll()
                 )
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)

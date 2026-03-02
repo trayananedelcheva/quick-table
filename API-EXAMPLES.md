@@ -94,21 +94,31 @@ curl -X POST http://localhost:8082/api/restaurants \
       {
         "tableNumber": "1",
         "capacity": 4,
-        "location": "Вътре"
+        "category": "INSIDE"
       },
       {
         "tableNumber": "2",
         "capacity": 2,
-        "location": "До прозорец"
+        "category": "INSIDE"
       },
       {
         "tableNumber": "3",
         "capacity": 6,
-        "location": "Тераса"
+        "category": "SUMMER_GARDEN"
+      },
+      {
+        "tableNumber": "4",
+        "capacity": 4,
+        "category": "WINTER_GARDEN"
       }
     ]
   }'
 ```
+
+**Категории на маси:**
+- `INSIDE` - "Вътре"
+- `SUMMER_GARDEN` - "Лятна градина"
+- `WINTER_GARDEN` - "Зимна градина"
 
 **Забележка:** Адресът ще бъде автоматично геокодиран чрез **OpenStreetMap Nominatim API** (външна услуга) и ще се попълнят latitude, longitude, city и country.
 
@@ -132,10 +142,51 @@ curl -X GET http://localhost:8082/api/restaurants/1
 curl -X POST http://localhost:8082/api/restaurants/1/tables \
   -H "Content-Type: application/json" \
   -d '{
-    "tableNumber": "4",
+    "tableNumber": "5",
     "capacity": 8,
-    "location": "Зала за събития"
+    "category": "WINTER_GARDEN"
   }'
+```
+
+### Управление на категории (затваряне/отваряне на секции)
+```bash
+# Затваряне на Лятна градина (напр. през зимата)
+curl -X PUT "http://localhost:8082/api/restaurants/1/categories/SUMMER_GARDEN/toggle?enabled=false" \
+  -H "Authorization: Bearer RESTAURANT_ADMIN_JWT_TOKEN"
+
+# Отваряне на Лятна градина (напр. през пролетта)
+curl -X PUT "http://localhost:8082/api/restaurants/1/categories/SUMMER_GARDEN/toggle?enabled=true" \
+  -H "Authorization: Bearer RESTAURANT_ADMIN_JWT_TOKEN"
+
+# Затваряне на Зимна градина през лятото
+curl -X PUT "http://localhost:8082/api/restaurants/1/categories/WINTER_GARDEN/toggle?enabled=false" \
+  -H "Authorization: Bearer RESTAURANT_ADMIN_JWT_TOKEN"
+```
+
+### Проверка статус на категории
+```bash
+curl -X GET "http://localhost:8082/api/restaurants/1/categories"
+```
+
+**Отговор:**
+```json
+[
+  {
+    "id": 1,
+    "category": "INSIDE",
+    "enabled": true
+  },
+  {
+    "id": 2,
+    "category": "SUMMER_GARDEN",
+    "enabled": false
+  },
+  {
+    "id": 3,
+    "category": "WINTER_GARDEN",
+    "enabled": true
+  }
+]
 ```
 
 ### Маси на ресторант (само за RESTAURANT_ADMIN)
@@ -147,14 +198,17 @@ curl -X GET http://localhost:8082/api/restaurants/1/tables
 
 ### Виж свободни часове за резервация (CLIENT)
 ```bash
-# Всички локации
-curl -X GET "http://localhost:8083/api/reservations/restaurant/1/available-slots?date=2026-03-15&guestsCount=4&location=ANY"
+# Всички категории
+curl -X GET "http://localhost:8083/api/reservations/restaurant/1/available-slots?date=2026-03-15&guestsCount=4"
 
-# Само Тераса
-curl -X GET "http://localhost:8083/api/reservations/restaurant/1/available-slots?date=2026-03-15&guestsCount=4&location=Тераса"
+# Само Лятна градина
+curl -X GET "http://localhost:8083/api/reservations/restaurant/1/available-slots?date=2026-03-15&guestsCount=4&category=SUMMER_GARDEN"
 
 # Само Вътре
-curl -X GET "http://localhost:8083/api/reservations/restaurant/1/available-slots?date=2026-03-15&guestsCount=4&location=Вътре"
+curl -X GET "http://localhost:8083/api/reservations/restaurant/1/available-slots?date=2026-03-15&guestsCount=4&category=INSIDE"
+
+# Само Зимна градина
+curl -X GET "http://localhost:8083/api/reservations/restaurant/1/available-slots?date=2026-03-15&guestsCount=4&category=WINTER_GARDEN"
 ```
 
 **Отговор:**
@@ -165,16 +219,18 @@ curl -X GET "http://localhost:8083/api/reservations/restaurant/1/available-slots
 **Как работи:**
 1. CLIENT избира ресторант
 2. Избира брой гости (напр. 4)
-3. **Избира локация** ("Вътре", "Тераса", "ANY")
+3. **Избира категория** (INSIDE, SUMMER_GARDEN, WINTER_GARDEN или любва)
 4. Избира дата (напр. 2026-03-15)
-5. Системата връща само свободни часове за избраната локация
+5. Системата връща само свободни часове за избраната категория
 6. CLIENT избира час и резервира
+7. **Системата автоматично избира random маса** от свободните в категорията
 
 **Предимства:**
 - CLIENT не вижда номера на маси
 - Не вижда къде се намират масите (номера/детайли)
-- Вижда само свободни часове за предпочитаната локация
+- Вижда само свободни часове за предпочитаната категория
 - По-прост и по-интуитивен UX
+- **Random разпределение на маси** за по-равномерно натоварване
 
 ---
 
@@ -182,7 +238,7 @@ curl -X GET "http://localhost:8083/api/reservations/restaurant/1/available-slots
 
 ### Създаване на резервация (нов UX - без tableId)
 ```bash
-# Резервация на тераса
+# Резервация в Лятна градина
 curl -X POST "http://localhost:8083/api/reservations?userId=1&userRole=CLIENT" \
   -H "Content-Type: application/json" \
   -d '{
@@ -190,7 +246,7 @@ curl -X POST "http://localhost:8083/api/reservations?userId=1&userRole=CLIENT" \
     "reservationDate": "2026-03-15",
     "reservationTime": "19:00:00",
     "guestsCount": 4,
-    "locationPreference": "Тераса",
+    "preferredCategory": "SUMMER_GARDEN",
     "specialRequests": "Алергия към ядки",
     "customerName": "Иван Иванов",
     "customerPhone": "0888123456",
@@ -205,13 +261,13 @@ curl -X POST "http://localhost:8083/api/reservations?userId=1&userRole=CLIENT" \
     "reservationDate": "2026-03-15",
     "reservationTime": "19:00:00",
     "guestsCount": 4,
-    "locationPreference": "Вътре",
+    "preferredCategory": "INSIDE",
     "customerName": "Иван Иванов",
     "customerPhone": "0888123456",
     "customerEmail": "ivan@example.com"
   }'
 
-# Без предпочитание (системата избира автоматично)
+# Без предпочитание (системата избира автоматично random)
 curl -X POST "http://localhost:8083/api/reservations?userId=1&userRole=CLIENT" \
   -H "Content-Type: application/json" \
   -d '{
@@ -226,12 +282,13 @@ curl -X POST "http://localhost:8083/api/reservations?userId=1&userRole=CLIENT" \
 ```
 
 **Важно:** 
-- `tableId` НЕ се подава - системата автоматично избира подходяща маса
-- `locationPreference` е опционално - "Вътре", "Тераса", "Градина" или null
-- Системата намира маса с капацитет >= `guestsCount` на избраната локация
+- `tableId` НЕ се подава - системата **автоматично избира random маса** от свободните
+- `preferredCategory` е опционално - INSIDE, SUMMER_GARDEN, WINTER_GARDEN или null
+- Системата намира **всички свободни маси** с капацитет >= `guestsCount` в категорията
+- **Избира random маса** от свободните за равномерно разпределение
 - **Inter-service комуникация:** `reservation-service` извиква `restaurant-service` за да вземе налични маси
 - Проверява дали масата е свободна за избрания час
-- Ако няма свободна маса с избраната локация, връща грешка
+- Ако няма свободна маса в избраната категория, връща грешка
 
 **Стари начин (deprecated):**
 Преди CLIENT трябваше да подаде `tableId`, но сега това е автоматично.
@@ -410,25 +467,30 @@ curl -X PUT "http://localhost:8082/api/restaurants/1/hours?adminUserId=2&opening
 
 ### Управление на маси (отваряне/затваряне)
 ```bash
-# Затваряне на маса (временно недостъпна)
-curl -X PUT "http://localhost:8082/api/restaurants/tables/3/availability?adminUserId=2&available=false" \
+# Затваряне на маса (временно недостъпна за ремонт)
+# Използва се restaurantId + tableNumber (не техническо ID!)
+curl -X PUT "http://localhost:8082/api/restaurants/5/tables/3/availability?available=false" \
   -H "Authorization: Bearer RESTAURANT_ADMIN_JWT_TOKEN"
 
 # Отваряне на маса
-curl -X PUT "http://localhost:8082/api/restaurants/tables/3/availability?adminUserId=2&available=true" \
+curl -X PUT "http://localhost:8082/api/restaurants/5/tables/3/availability?available=true" \
   -H "Authorization: Bearer RESTAURANT_ADMIN_JWT_TOKEN"
 ```
 
 **Отговор:**
 ```json
 {
-  "id": 3,
-  "tableNumber": "A5",
+  "id": 10,
+  "tableNumber": "3",
   "capacity": 6,
-  "location": "Терасата",
+  "category": "SUMMER_GARDEN",
   "available": false
 }
 ```
+
+**Забележка:** 
+- Използваме номера на масата (`tableNumber`), който RESTAURANT_ADMIN знае, не техническото `id` от базата
+- За затваряне на цяла категория (напр. Лятна градина през зимата), използвай endpoint-а за категории по-горе.
 
 ---
 

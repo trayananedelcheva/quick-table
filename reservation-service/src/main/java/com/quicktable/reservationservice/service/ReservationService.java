@@ -1,6 +1,7 @@
 package com.quicktable.reservationservice.service;
 
 import com.quicktable.common.dto.ReservationStatus;
+import com.quicktable.common.dto.TableCategory;
 import com.quicktable.common.dto.UserRole;
 import com.quicktable.reservationservice.client.RestaurantServiceClient;
 import com.quicktable.reservationservice.dto.ReservationRequest;
@@ -18,6 +19,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 import java.util.stream.Collectors;
 
 @Service
@@ -27,6 +29,7 @@ public class ReservationService {
 
     private final ReservationRepository reservationRepository;
     private final RestaurantServiceClient restaurantServiceClient;
+    private final Random random = new Random();
 
     @Transactional
     public ReservationResponse createReservation(Long userId, ReservationRequest request) {
@@ -39,20 +42,19 @@ public class ReservationService {
 
         // АКО tableId НЕ Е ПОДАДЕНО, автоматично избираме подходяща маса
         if (request.getTableId() == null) {
-            String location = request.getLocationPreference() != null ? 
-                    request.getLocationPreference() : "ANY";
+            TableCategory category = request.getPreferredCategory();
             
             Long autoSelectedTableId = findAvailableTable(
                     request.getRestaurantId(),
                     request.getReservationDate(),
                     request.getReservationTime(),
                     request.getGuestsCount(),
-                    location
+                    category
             );
             if (autoSelectedTableId == null) {
-                String locationMsg = "ANY".equals(location) ? "" : " с локация " + location;
+                String categoryMsg = category != null ? " в категория " + category.getDisplayName() : "";
                 throw new RuntimeException("Няма налична маса за избраното време, брой гости (" + 
-                        request.getGuestsCount() + ")" + locationMsg);
+                        request.getGuestsCount() + ")" + categoryMsg);
             }
             request.setTableId(autoSelectedTableId);
             log.info("Автоматично избрана маса: {}", autoSelectedTableId);
@@ -108,37 +110,47 @@ public class ReservationService {
     }
 
     /**
-     * Намира първата налична маса за даден ресторант, дата, час и брой гости
+     * Намира случайна налична маса за даден ресторант, дата, час и брой гости
      * @return tableId или null ако няма налична маса
      */
     private Long findAvailableTable(Long restaurantId, LocalDate date, LocalTime time, 
-                                     Integer guestsCount, String locationPreference) {
-        log.info("Търсене на налична маса за ресторант {} на {} в {} за {} гости (локация: {})",
-                restaurantId, date, time, guestsCount, locationPreference);
+                                     Integer guestsCount, TableCategory preferredCategory) {
+        log.info("Търсене на налична маса за ресторант {} на {} в {} за {} гости (категория: {})",
+                restaurantId, date, time, guestsCount, 
+                preferredCategory != null ? preferredCategory.getDisplayName() : "Любва");
         
         // Извличаме налични маси от restaurant-service
         List<TableDTO> availableTables = restaurantServiceClient.findAvailableTables(
-                restaurantId, guestsCount, locationPreference);
+                restaurantId, guestsCount, preferredCategory);
         
         if (availableTables.isEmpty()) {
-            log.warn("Няма налични маси с капацитет >= {} и локация {}", guestsCount, locationPreference);
+            log.warn("Няма налични маси с капацитет >= {} в категория {}", guestsCount, 
+                    preferredCategory != null ? preferredCategory : "любва");
             return null;
         }
         
-        // Проверяваме коя маса е свободна за избраното време
+        // Проверяваме кои маси са свободни за избраното време
         List<Reservation> existingReservations = reservationRepository
                 .findByRestaurantIdAndReservationDate(restaurantId, date);
         
+        List<TableDTO> freeTables = new ArrayList<>();
         for (TableDTO table : availableTables) {
             if (!isTableOccupied(table.getId(), time, existingReservations)) {
-                log.info("Избрана маса {} (капацитет: {}, локация: {})", 
-                        table.getTableNumber(), table.getCapacity(), table.getLocation());
-                return table.getId();
+                freeTables.add(table);
             }
         }
         
-        log.warn("Всички подходящи маси са заети за избраното време");
-        return null;
+        if (freeTables.isEmpty()) {
+            log.warn("Всички подходящи маси са заети за избраното време");
+            return null;
+        }
+        
+        // RANDOM ИЗБОР НА МАСА ОТ СВОБОДНИТЕ
+        TableDTO selectedTable = freeTables.get(random.nextInt(freeTables.size()));
+        log.info("Избрана маса {} (капацитет: {}, категория: {}) от {} свободни", 
+                selectedTable.getTableNumber(), selectedTable.getCapacity(), 
+                selectedTable.getCategory().getDisplayName(), freeTables.size());
+        return selectedTable.getId();
     }
     
     private boolean isTableOccupied(Long tableId, LocalTime requestedTime, List<Reservation> existingReservations) {
@@ -157,9 +169,10 @@ public class ReservationService {
     }
 
     public List<String> getAvailableTimeSlots(Long restaurantId, LocalDate date, 
-                                              Integer guestsCount, String locationPreference) {
-        log.info("Извличане на налични часове за ресторант {} на дата {} за {} гости (локация: {})",
-                restaurantId, date, guestsCount, locationPreference);
+                                              Integer guestsCount, TableCategory preferredCategory) {
+        log.info("Извличане на налични часове за ресторант {} на дата {} за {} гости (категория: {})",
+                restaurantId, date, guestsCount, 
+                preferredCategory != null ? preferredCategory.getDisplayName() : "Любва");
 
         // TODO: Извличаме работното време от restaurant-service
         // За сега генерираме слотове от 10:00 до 22:00
@@ -175,17 +188,17 @@ public class ReservationService {
         // Проверяваме кои часове са свободни
         return allSlots.stream()
                 .filter(slot -> hasAvailableTableForSlot(restaurantId, date, slot, guestsCount, 
-                        locationPreference, todayReservations))
+                        preferredCategory, todayReservations))
                 .map(LocalTime::toString)
                 .collect(Collectors.toList());
     }
 
     private boolean hasAvailableTableForSlot(Long restaurantId, LocalDate date, LocalTime time,
-                                             Integer guestsCount, String locationPreference, 
+                                             Integer guestsCount, TableCategory preferredCategory, 
                                              List<Reservation> existingReservations) {
-        // Извличаме налични маси с подходящ капацитет и локация
+        // Извличаме налични маси с подходящ капацитет и категория
         List<TableDTO> availableTables = restaurantServiceClient.findAvailableTables(
-                restaurantId, guestsCount, locationPreference);
+                restaurantId, guestsCount, preferredCategory);
         
         if (availableTables.isEmpty()) {
             return false;
