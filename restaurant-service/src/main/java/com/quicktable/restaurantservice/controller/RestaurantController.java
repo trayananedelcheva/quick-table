@@ -160,33 +160,33 @@ public class RestaurantController {
         return ResponseEntity.ok(response);
     }
 
-    @PutMapping("/{id}/categories/{category}/toggle")
-    public ResponseEntity<Void> toggleCategoryAvailability(
+    @PutMapping("/{id}/locations/{location}/toggle")
+    public ResponseEntity<Void> toggleLocationAvailability(
             HttpServletRequest request,
             @PathVariable Long id,
-            @PathVariable String category,
+            @PathVariable String location,
             @RequestParam Boolean enabled
     ) {
         Long userId = getUserIdFromRequest(request);
         String userRole = getUserRoleFromRequest(request);
         
-        com.quicktable.common.dto.TableCategory tableCategory;
+        com.quicktable.common.dto.TableLocation tableLocation;
         try {
-            tableCategory = com.quicktable.common.dto.TableCategory.valueOf(category.toUpperCase());
+            tableLocation = com.quicktable.common.dto.TableLocation.valueOf(location.toUpperCase());
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().build();
         }
         
-        restaurantService.toggleCategoryAvailability(id, tableCategory, enabled, userId, userRole);
+        restaurantService.toggleLocationAvailability(id, tableLocation, enabled, userId, userRole);
         return ResponseEntity.ok().build();
     }
 
-    @GetMapping("/{id}/categories")
-    public ResponseEntity<List<com.quicktable.restaurantservice.dto.CategoryAvailabilityResponse>> getCategoryAvailability(
+    @GetMapping("/{id}/locations")
+    public ResponseEntity<List<com.quicktable.restaurantservice.dto.LocationAvailabilityResponse>> getLocationAvailability(
             @PathVariable Long id
     ) {
-        List<com.quicktable.restaurantservice.dto.CategoryAvailabilityResponse> categories = 
-                restaurantService.getCategoryAvailability(id);
-        return ResponseEntity.ok(categories);
+        List<com.quicktable.restaurantservice.dto.LocationAvailabilityResponse> locations = 
+                restaurantService.getLocationAvailability(id);
+        return ResponseEntity.ok(locations);
     }
 }

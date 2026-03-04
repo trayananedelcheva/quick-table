@@ -1,6 +1,6 @@
 package com.quicktable.restaurantservice.entity;
 
-import com.quicktable.common.dto.TableCategory;
+import com.quicktable.common.dto.TableLocation;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -8,13 +8,13 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "category_availability",
-       uniqueConstraints = @UniqueConstraint(columnNames = {"restaurant_id", "category"}))
+@Table(name = "location_availability",
+       uniqueConstraints = @UniqueConstraint(columnNames = {"restaurant_id", "location"}))
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class CategoryAvailability {
+public class LocationAvailability {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -26,7 +26,7 @@ public class CategoryAvailability {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private TableCategory category;
+    private TableLocation location;
 
     @Column(nullable = false)
     private Boolean enabled;

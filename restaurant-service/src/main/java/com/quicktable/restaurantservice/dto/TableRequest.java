@@ -1,6 +1,6 @@
 package com.quicktable.restaurantservice.dto;
 
-import com.quicktable.common.dto.TableCategory;
+import com.quicktable.common.dto.TableLocation;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -22,6 +22,6 @@ public class TableRequest {
     @Min(value = 1, message = "Капацитетът трябва да е поне 1")
     private Integer capacity;
 
-    @NotNull(message = "Категорията е задължителна")
-    private TableCategory category;
+    @NotNull(message = "Локацията е задължителна")
+    private TableLocation location;
 }

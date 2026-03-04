@@ -1,6 +1,6 @@
 package com.quicktable.restaurantservice.repository;
 
-import com.quicktable.common.dto.TableCategory;
+import com.quicktable.common.dto.TableLocation;
 import com.quicktable.restaurantservice.entity.RestaurantTable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
@@ -16,10 +16,10 @@ public interface RestaurantTableRepository extends JpaRepository<RestaurantTable
     
     List<RestaurantTable> findByRestaurantIdAndCapacityGreaterThanEqual(Long restaurantId, Integer capacity);
     
-    List<RestaurantTable> findByRestaurantIdAndCategoryAndAvailableTrue(Long restaurantId, TableCategory category);
+    List<RestaurantTable> findByRestaurantIdAndLocationAndAvailableTrue(Long restaurantId, TableLocation location);
     
-    List<RestaurantTable> findByRestaurantIdAndCategoryAndCapacityGreaterThanEqualAndAvailableTrue(
-            Long restaurantId, TableCategory category, Integer capacity);
+    List<RestaurantTable> findByRestaurantIdAndLocationAndCapacityGreaterThanEqualAndAvailableTrue(
+            Long restaurantId, TableLocation location, Integer capacity);
     
     java.util.Optional<RestaurantTable> findByRestaurantIdAndTableNumber(Long restaurantId, String tableNumber);
 }

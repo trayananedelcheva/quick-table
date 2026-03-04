@@ -11,6 +11,38 @@ Quick Table е микросервизна система за запазване
 - REST API
 - OpenStreetMap Nominatim API (геокодиране)
 
+## Структура на проекта
+
+```
+quick-table/
+├── 📚 docs/                  # Документация
+│   ├── API-EXAMPLES.md
+│   ├── CONFIGURATION.md
+│   ├── DOCUMENTATION.md
+│   ├── GETTING-STARTED.md
+│   ├── SECURITY.md
+│   ├── CHANGELOG.md
+│   ├── REFACTORING-CHANGELOG.md
+│   └── ... (всички .md файлове)
+│
+├── 🗄️ database/             # SQL скриптове
+│   ├── database-setup.sql
+│   ├── migrate-category-to-location.sql
+│   ├── sample-data.sql
+│   └── ... (всички .sql файлове)
+│
+├── 🧪 testing/              # Тестване
+│   └── Quick-Table-API.postman_collection.json
+│
+├── 🔧 user-service/         # User Service (8081)
+├── 🍽️ restaurant-service/   # Restaurant Service (8082)
+├── 📅 reservation-service/  # Reservation Service (8083)
+├── 📦 common/               # Common Module
+│
+├── pom.xml                  # Root Maven config
+└── README.md               # Този файл
+```
+
 ## Микросервизи
 
 ### 1. User Service (port: 8081)
@@ -88,15 +120,27 @@ mvn spring-boot:run
 
 ## 📚 Документация
 
-- **[GETTING-STARTED.md](GETTING-STARTED.md)** - Стъпка по стъпка инструкции за стартиране
-- **[DOCUMENTATION.md](DOCUMENTATION.md)** - Пълна документация за курсовия проект
-- **[API-EXAMPLES.md](API-EXAMPLES.md)** - Примери за API заявки
-- **[CONFIGURATION.md](CONFIGURATION.md)** - Конфигурационни файлове
-- **[SECURITY.md](SECURITY.md)** - Security best practices и role management
-- **[UI-PLAN.md](UI-PLAN.md)** - Frontend UI план и mockups
-- **[ROLE-BASED-BUSINESS-RULES.md](ROLE-BASED-BUSINESS-RULES.md)** - Бизнес правила по роли
-- **[CHANGELOG-UX-IMPROVEMENT.md](CHANGELOG-UX-IMPROVEMENT.md)** - UX подобрения в резервационния процес
-- **[Quick-Table-API.postman_collection.json](Quick-Table-API.postman_collection.json)** - Postman collection
+Всички документи са организирани в папка [**docs/**](docs/):
+
+- **[GETTING-STARTED.md](docs/GETTING-STARTED.md)** - Стъпка по стъпка инструкции за стартиране
+- **[DOCUMENTATION.md](docs/DOCUMENTATION.md)** - Пълна документация за курсовия проект
+- **[API-EXAMPLES.md](docs/API-EXAMPLES.md)** - Примери за API заявки
+- **[CONFIGURATION.md](docs/CONFIGURATION.md)** - Конфигурационни файлове
+- **[SECURITY.md](docs/SECURITY.md)** - Security best practices и role management
+- **[UI-PLAN.md](docs/UI-PLAN.md)** - Frontend UI план и mockups
+- **[ROLE-BASED-BUSINESS-RULES.md](docs/ROLE-BASED-BUSINESS-RULES.md)** - Бизнес правила по роли
+- **[CHANGELOG-UX-IMPROVEMENT.md](docs/CHANGELOG-UX-IMPROVEMENT.md)** - UX подобрения в резервационния процес
+- **[REFACTORING-CHANGELOG.md](docs/REFACTORING-CHANGELOG.md)** - Category → Location рефакторинг
+
+### Database Scripts
+SQL файлове в папка [**database/**](database/):
+- **[database-setup.sql](database/database-setup.sql)** - Пълна схема за всички бази данни
+- **[create-admin-only.sql](database/create-admin-only.sql)** - Създава admin акаунт
+- **[sample-data.sql](database/sample-data.sql)** - Примерни данни
+- **[migrate-category-to-location.sql](database/migrate-category-to-location.sql)** - Последна миграция
+
+### Testing
+- **[Quick-Table-API.postman_collection.json](testing/Quick-Table-API.postman_collection.json)** - Postman collection с всички endpoints
 
 ## 🎯 Покрити изисквания за курсовия проект
 
@@ -111,31 +155,35 @@ mvn spring-boot:run
 ## 🚀 Бързо стартиране
 
 ```bash
-# 1. Създай бази данни
-psql -U postgres -c "CREATE DATABASE quicktable_users;"
-psql -U postgres -c "CREATE DATABASE quicktable_restaurants;"
-psql -U postgres -c "CREATE DATABASE quicktable_reservations;"
+# 1. Създай бази данни и схема
+psql -U postgres -f database/database-setup.sql
 
-# 2. Build проекта
+# 2. Създай admin акаунт
+psql -U postgres -f database/create-admin-only.sql
+
+# 3. (Опционално) Добави примерни данни
+psql -U postgres -f database/sample-data.sql
+
+# 4. Изпълни последната миграция (category → location)
+psql -U postgres -f database/migrate-category-to-location.sql
+
+# 5. Build проекта
 mvn clean install
 
-# 3. Стартирай user-service първо
-cd user-service && mvn spring-boot:run
+# 6. Стартирай услугите (в отделни терминали)
+cd user-service && mvn spring-boot:run         # port 8081
+cd restaurant-service && mvn spring-boot:run   # port 8082
+cd reservation-service && mvn spring-boot:run  # port 8083
 
-# 4. Създай първия SYSTEM_ADMIN (в нов терминал)
-psql -U postgres -f database-setup.sql
-
-# 5. Стартирай останалите услуги
-cd restaurant-service && mvn spring-boot:run  
-cd reservation-service && mvn spring-boot:run
-
-# 6. Влез като admin
+# 7. Влез като admin (получи JWT token)
 curl -X POST http://localhost:8081/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"admin@quicktable.com","password":"admin123"}'
+
+# 8. Import Postman collection от testing/Quick-Table-API.postman_collection.json
 ```
 
-Виж [GETTING-STARTED.md](GETTING-STARTED.md) за подробни инструкции.
+Виж [docs/GETTING-STARTED.md](docs/GETTING-STARTED.md) за подробни инструкции.
 
 ## 📝 Основни характеристики
 
@@ -167,7 +215,7 @@ curl -X POST http://localhost:8081/api/auth/login \
 3. **BPEL процес**
    - Orchestration на резервационен workflow
 
-Виж [FUTURE-ENHANCEMENTS.md](FUTURE-ENHANCEMENTS.md) за детайли.
+Виж [docs/FUTURE-ENHANCEMENTS.md](docs/FUTURE-ENHANCEMENTS.md) за детайли.
 
 ## 👤 Автор
 **[Твоето име]**  

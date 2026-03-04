@@ -1,5 +1,10 @@
 # Quick Table - API Тестове с Postman/cURL
 
+> **🔄 ВАЖНО:** След рефакторинга (март 2026) `category` е преименувано на `location` в целия API.  
+> Старите endpoints: `/categories/` → Нови: `/locations/`  
+> Старите fields: `category`, `preferredCategory` → Нови: `location`, `preferredLocation`  
+> Виж [REFACTORING-CHANGELOG.md](REFACTORING-CHANGELOG.md) за детайли.
+
 ## 1. User Service (port 8081)
 
 ### Регистрация на потребител
@@ -94,28 +99,28 @@ curl -X POST http://localhost:8082/api/restaurants \
       {
         "tableNumber": "1",
         "capacity": 4,
-        "category": "INSIDE"
+        "location": "INSIDE"
       },
       {
         "tableNumber": "2",
         "capacity": 2,
-        "category": "INSIDE"
+        "location": "INSIDE"
       },
       {
         "tableNumber": "3",
         "capacity": 6,
-        "category": "SUMMER_GARDEN"
+        "location": "SUMMER_GARDEN"
       },
       {
         "tableNumber": "4",
         "capacity": 4,
-        "category": "WINTER_GARDEN"
+        "location": "WINTER_GARDEN"
       }
     ]
   }'
 ```
 
-**Категории на маси:**
+**Локации на маси:**
 - `INSIDE` - "Вътре"
 - `SUMMER_GARDEN` - "Лятна градина"
 - `WINTER_GARDEN` - "Зимна градина"
@@ -137,6 +142,77 @@ curl -X GET "http://localhost:8082/api/restaurants?city=София"
 curl -X GET http://localhost:8082/api/restaurants/1
 ```
 
+**Важно:** Отговорът сега е с **нова структура** - масите са групирани по локация!
+
+**Отговор (нов формат):**
+```json
+{
+  "id": 1,
+  "name": "Ресторант Копитото",
+  "description": "Традиционна българска кухня",
+  "address": "ул. Витоша 15, София, България",
+  "city": "София",
+  "country": "България",
+  "phone": "+359 2 123 4567",
+  "email": "info@kopitoto.bg",
+  "openingTime": "10:00:00",
+  "closingTime": "23:00:00",
+  "latitude": 42.6977,
+  "longitude": 23.3219,
+  "locations": {
+    "INSIDE": {
+      "displayName": "Вътре",
+      "enabled": true,
+      "tables": [
+        {
+          "id": 1,
+          "tableNumber": "1",
+          "capacity": 4,
+          "available": true
+        },
+        {
+          "id": 2,
+          "tableNumber": "2",
+          "capacity": 2,
+          "available": true
+        }
+      ]
+    },
+    "SUMMER_GARDEN": {
+      "displayName": "Лятна градина",
+      "enabled": false,
+      "tables": [
+        {
+          "id": 3,
+          "tableNumber": "3",
+          "capacity": 6,
+          "available": true
+        }
+      ]
+    },
+    "WINTER_GARDEN": {
+      "displayName": "Зимна градина",
+      "enabled": true,
+      "tables": [
+        {
+          "id": 4,
+          "tableNumber": "4",
+          "capacity": 4,
+          "available": true
+        }
+      ]
+    }
+  }
+}
+```
+
+**Ключови моменти:**
+- 🆕 `locations` е обект (Map), не array!
+- 🆕 Всяка локация има `displayName` на български
+- 🆕 Всяка локация има `enabled` статус (за сезонно управление)
+- 🆕 Масите са групирани по локация под `tables` array
+- ✅ Ако location е `enabled: false`, не може да се прави резервация там
+
 ### Добавяне на маса към ресторант
 ```bash
 curl -X POST http://localhost:8082/api/restaurants/1/tables \
@@ -144,28 +220,28 @@ curl -X POST http://localhost:8082/api/restaurants/1/tables \
   -d '{
     "tableNumber": "5",
     "capacity": 8,
-    "category": "WINTER_GARDEN"
+    "location": "WINTER_GARDEN"
   }'
 ```
 
-### Управление на категории (затваряне/отваряне на секции)
+### Управление на локации (затваряне/отваряне на секции)
 ```bash
 # Затваряне на Лятна градина (напр. през зимата)
-curl -X PUT "http://localhost:8082/api/restaurants/1/categories/SUMMER_GARDEN/toggle?enabled=false" \
+curl -X PUT "http://localhost:8082/api/restaurants/1/locations/SUMMER_GARDEN/toggle?enabled=false" \
   -H "Authorization: Bearer RESTAURANT_ADMIN_JWT_TOKEN"
 
 # Отваряне на Лятна градина (напр. през пролетта)
-curl -X PUT "http://localhost:8082/api/restaurants/1/categories/SUMMER_GARDEN/toggle?enabled=true" \
+curl -X PUT "http://localhost:8082/api/restaurants/1/locations/SUMMER_GARDEN/toggle?enabled=true" \
   -H "Authorization: Bearer RESTAURANT_ADMIN_JWT_TOKEN"
 
 # Затваряне на Зимна градина през лятото
-curl -X PUT "http://localhost:8082/api/restaurants/1/categories/WINTER_GARDEN/toggle?enabled=false" \
+curl -X PUT "http://localhost:8082/api/restaurants/1/locations/WINTER_GARDEN/toggle?enabled=false" \
   -H "Authorization: Bearer RESTAURANT_ADMIN_JWT_TOKEN"
 ```
 
-### Проверка статус на категории
+### Проверка статус на локации
 ```bash
-curl -X GET "http://localhost:8082/api/restaurants/1/categories"
+curl -X GET "http://localhost:8082/api/restaurants/1/locations"
 ```
 
 **Отговор:**
@@ -173,17 +249,17 @@ curl -X GET "http://localhost:8082/api/restaurants/1/categories"
 [
   {
     "id": 1,
-    "category": "INSIDE",
+    "location": "INSIDE",
     "enabled": true
   },
   {
     "id": 2,
-    "category": "SUMMER_GARDEN",
+    "location": "SUMMER_GARDEN",
     "enabled": false
   },
   {
     "id": 3,
-    "category": "WINTER_GARDEN",
+    "location": "WINTER_GARDEN",
     "enabled": true
   }
 ]
@@ -198,17 +274,17 @@ curl -X GET http://localhost:8082/api/restaurants/1/tables
 
 ### Виж свободни часове за резервация (CLIENT)
 ```bash
-# Всички категории
+# Всички локации
 curl -X GET "http://localhost:8083/api/reservations/restaurant/1/available-slots?date=2026-03-15&guestsCount=4"
 
 # Само Лятна градина
-curl -X GET "http://localhost:8083/api/reservations/restaurant/1/available-slots?date=2026-03-15&guestsCount=4&category=SUMMER_GARDEN"
+curl -X GET "http://localhost:8083/api/reservations/restaurant/1/available-slots?date=2026-03-15&guestsCount=4&location=SUMMER_GARDEN"
 
 # Само Вътре
-curl -X GET "http://localhost:8083/api/reservations/restaurant/1/available-slots?date=2026-03-15&guestsCount=4&category=INSIDE"
+curl -X GET "http://localhost:8083/api/reservations/restaurant/1/available-slots?date=2026-03-15&guestsCount=4&location=INSIDE"
 
 # Само Зимна градина
-curl -X GET "http://localhost:8083/api/reservations/restaurant/1/available-slots?date=2026-03-15&guestsCount=4&category=WINTER_GARDEN"
+curl -X GET "http://localhost:8083/api/reservations/restaurant/1/available-slots?date=2026-03-15&guestsCount=4&location=WINTER_GARDEN"
 ```
 
 **Отговор:**
@@ -219,16 +295,16 @@ curl -X GET "http://localhost:8083/api/reservations/restaurant/1/available-slots
 **Как работи:**
 1. CLIENT избира ресторант
 2. Избира брой гости (напр. 4)
-3. **Избира категория** (INSIDE, SUMMER_GARDEN, WINTER_GARDEN или любва)
+3. **Избира локация** (INSIDE, SUMMER_GARDEN, WINTER_GARDEN или любва)
 4. Избира дата (напр. 2026-03-15)
-5. Системата връща само свободни часове за избраната категория
+5. Системата връща само свободни часове за избраната локация
 6. CLIENT избира час и резервира
-7. **Системата автоматично избира random маса** от свободните в категорията
+7. **Системата автоматично избира random маса** от свободните в локацията
 
 **Предимства:**
 - CLIENT не вижда номера на маси
 - Не вижда къде се намират масите (номера/детайли)
-- Вижда само свободни часове за предпочитаната категория
+- Вижда само свободни часове за предпочитаната локация
 - По-прост и по-интуитивен UX
 - **Random разпределение на маси** за по-равномерно натоварване
 
@@ -246,7 +322,7 @@ curl -X POST "http://localhost:8083/api/reservations?userId=1&userRole=CLIENT" \
     "reservationDate": "2026-03-15",
     "reservationTime": "19:00:00",
     "guestsCount": 4,
-    "preferredCategory": "SUMMER_GARDEN",
+    "preferredLocation": "SUMMER_GARDEN",
     "specialRequests": "Алергия към ядки",
     "customerName": "Иван Иванов",
     "customerPhone": "0888123456",
@@ -261,7 +337,7 @@ curl -X POST "http://localhost:8083/api/reservations?userId=1&userRole=CLIENT" \
     "reservationDate": "2026-03-15",
     "reservationTime": "19:00:00",
     "guestsCount": 4,
-    "preferredCategory": "INSIDE",
+    "preferredLocation": "INSIDE",
     "customerName": "Иван Иванов",
     "customerPhone": "0888123456",
     "customerEmail": "ivan@example.com"
@@ -283,12 +359,12 @@ curl -X POST "http://localhost:8083/api/reservations?userId=1&userRole=CLIENT" \
 
 **Важно:** 
 - `tableId` НЕ се подава - системата **автоматично избира random маса** от свободните
-- `preferredCategory` е опционално - INSIDE, SUMMER_GARDEN, WINTER_GARDEN или null
-- Системата намира **всички свободни маси** с капацитет >= `guestsCount` в категорията
+- `preferredLocation` е опционално - INSIDE, SUMMER_GARDEN, WINTER_GARDEN или null
+- Системата намира **всички свободни маси** с капацитет >= `guestsCount` в локацията
 - **Избира random маса** от свободните за равномерно разпределение
 - **Inter-service комуникация:** `reservation-service` извиква `restaurant-service` за да вземе налични маси
 - Проверява дали масата е свободна за избрания час
-- Ако няма свободна маса в избраната категория, връща грешка
+- Ако няма свободна маса в избраната локация, връща грешка
 
 **Стари начин (deprecated):**
 Преди CLIENT трябваше да подаде `tableId`, но сега това е автоматично.
@@ -483,14 +559,14 @@ curl -X PUT "http://localhost:8082/api/restaurants/5/tables/3/availability?avail
   "id": 10,
   "tableNumber": "3",
   "capacity": 6,
-  "category": "SUMMER_GARDEN",
+  "location": "SUMMER_GARDEN",
   "available": false
 }
 ```
 
 **Забележка:** 
 - Използваме номера на масата (`tableNumber`), който RESTAURANT_ADMIN знае, не техническото `id` от базата
-- За затваряне на цяла категория (напр. Лятна градина през зимата), използвай endpoint-а за категории по-горе.
+- За затваряне на цяла локация (напр. Лятна градина през зимата), използвай endpoint-а за локации по-горе.
 
 ---
 

@@ -6,7 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalTime;
-import java.util.List;
+import java.util.Map;
 
 @Data
 @Builder
@@ -30,5 +30,5 @@ public class RestaurantResponse {
     private Boolean active;
     private Integer totalTables;
     private Integer availableTables;
-    private List<TableResponse> tables;
+    private Map<String, LocationGroupResponse> locations; // Маси групирани по локация
 }

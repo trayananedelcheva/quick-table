@@ -1,11 +1,11 @@
 package com.quicktable.restaurantservice.service;
 
-import com.quicktable.common.dto.TableCategory;
+import com.quicktable.common.dto.TableLocation;
 import com.quicktable.restaurantservice.dto.*;
-import com.quicktable.restaurantservice.entity.CategoryAvailability;
+import com.quicktable.restaurantservice.entity.LocationAvailability;
 import com.quicktable.restaurantservice.entity.Restaurant;
 import com.quicktable.restaurantservice.entity.RestaurantTable;
-import com.quicktable.restaurantservice.repository.CategoryAvailabilityRepository;
+import com.quicktable.restaurantservice.repository.LocationAvailabilityRepository;
 import com.quicktable.restaurantservice.repository.RestaurantRepository;
 import com.quicktable.restaurantservice.repository.RestaurantTableRepository;
 import lombok.RequiredArgsConstructor;
@@ -25,7 +25,7 @@ public class RestaurantService {
 
     private final RestaurantRepository restaurantRepository;
     private final RestaurantTableRepository tableRepository;
-    private final CategoryAvailabilityRepository categoryAvailabilityRepository;
+    private final LocationAvailabilityRepository locationAvailabilityRepository;
     private final GeocodingService geocodingService;
 
     @Transactional
@@ -64,7 +64,7 @@ public class RestaurantService {
                         .restaurant(restaurant)
                         .tableNumber(tableRequest.getTableNumber())
                         .capacity(tableRequest.getCapacity())
-                        .category(tableRequest.getCategory())
+                        .location(tableRequest.getLocation())
                         .available(true)
                         .build();
                 restaurant.getTables().add(table);
@@ -74,14 +74,14 @@ public class RestaurantService {
         restaurant = restaurantRepository.save(restaurant);
         log.info("Ресторант създаден с ID: {}", restaurant.getId());
 
-        // Автоматично създаване на CategoryAvailability записи за всички категории
-        for (TableCategory category : TableCategory.values()) {
-            CategoryAvailability categoryAvailability = CategoryAvailability.builder()
+        // Автоматично създаване на LocationAvailability записи за всички локации
+        for (TableLocation location : TableLocation.values()) {
+            LocationAvailability locationAvailability = LocationAvailability.builder()
                     .restaurant(restaurant)
-                    .category(category)
-                    .enabled(true) // По подразбиране всички категории са активни
+                    .location(location)
+                    .enabled(true) // По подразбиране всички локации са активни
                     .build();
-            categoryAvailabilityRepository.save(categoryAvailability);
+            locationAvailabilityRepository.save(locationAvailability);
         }
 
         return mapToResponse(restaurant, true);
@@ -202,11 +202,20 @@ public class RestaurantService {
             throw new RuntimeException("Нямате права да добавяте маси в този ресторант");
         }
 
+        // VALIDATION: Проверка за дублиращ се tableNumber в същия ресторант
+        tableRepository.findByRestaurantIdAndTableNumber(restaurantId, request.getTableNumber())
+                .ifPresent(existingTable -> {
+                    throw new RuntimeException(
+                        String.format("Маса с номер '%s' вече съществува в този ресторант", 
+                                      request.getTableNumber())
+                    );
+                });
+
         RestaurantTable table = RestaurantTable.builder()
                 .restaurant(restaurant)
                 .tableNumber(request.getTableNumber())
                 .capacity(request.getCapacity())
-                .category(request.getCategory())
+                .location(request.getLocation())
                 .available(true)
                 .build();
 
@@ -332,10 +341,39 @@ public class RestaurantService {
                         .filter(RestaurantTable::getAvailable).count());
 
         if (includeTables) {
-            List<TableResponse> tables = restaurant.getTables().stream()
-                    .map(this::mapToTableResponse)
-                    .collect(Collectors.toList());
-            builder.tables(tables);
+            // Групиране на маси по локация
+            java.util.Map<String, com.quicktable.restaurantservice.dto.LocationGroupResponse> locationsMap = new java.util.HashMap<>();
+            
+            // Извличаме enabled статусите за всички локации
+            java.util.Map<com.quicktable.common.dto.TableLocation, Boolean> locationStatuses = new java.util.HashMap<>();
+            List<LocationAvailability> availabilities = locationAvailabilityRepository.findByRestaurantId(restaurant.getId());
+            for (LocationAvailability avail : availabilities) {
+                locationStatuses.put(avail.getLocation(), avail.getEnabled());
+            }
+            
+            // Групиране на маси по локация
+            java.util.Map<com.quicktable.common.dto.TableLocation, List<TableResponse>> tablesByLocation = 
+                restaurant.getTables().stream()
+                    .collect(Collectors.groupingBy(
+                        RestaurantTable::getLocation,
+                        Collectors.mapping(this::mapToTableResponse, Collectors.toList())
+                    ));
+            
+            // Създаване на LocationGroupResponse за всяка локация (дори ако няма маси)
+            for (com.quicktable.common.dto.TableLocation location : com.quicktable.common.dto.TableLocation.values()) {
+                List<TableResponse> tables = tablesByLocation.getOrDefault(location, new ArrayList<>());
+                Boolean enabled = locationStatuses.getOrDefault(location, true);
+                
+                LocationGroupResponse locationGroup = LocationGroupResponse.builder()
+                        .displayName(location.getDisplayName())
+                        .enabled(enabled)
+                        .tables(tables)
+                        .build();
+                
+                locationsMap.put(location.name(), locationGroup);
+            }
+            
+            builder.locations(locationsMap);
         }
 
         return builder.build();
@@ -346,66 +384,66 @@ public class RestaurantService {
                 .id(table.getId())
                 .tableNumber(table.getTableNumber())
                 .capacity(table.getCapacity())
-                .category(table.getCategory())
+                .location(table.getLocation())
                 .available(table.getAvailable())
                 .build();
     }
 
-    // ==================== УПРАВЛЕНИЕ НА КАТЕГОРИИ ====================
+    // ==================== УПРАВЛЕНИЕ НА ЛОКАЦИИ ====================
 
     @Transactional
-    public void toggleCategoryAvailability(Long restaurantId, TableCategory category, Boolean enabled, 
+    public void toggleLocationAvailability(Long restaurantId, TableLocation location, Boolean enabled, 
                                           Long userId, String userRole) {
         Restaurant restaurant = restaurantRepository.findById(restaurantId)
                 .orElseThrow(() -> new RuntimeException("Ресторант не е намерен"));
 
-        // BUSINESS RULE: SYSTEM_ADMIN или собствениkът могат да управляват категории
+        // BUSINESS RULE: SYSTEM_ADMIN или собственикът могат да управляват локации
         boolean isSystemAdmin = "SYSTEM_ADMIN".equals(userRole);
         boolean isRestaurantAdmin = "RESTAURANT_ADMIN".equals(userRole);
         boolean isOwner = restaurant.getAdminUserId().equals(userId);
 
         if (!isSystemAdmin && !(isRestaurantAdmin && isOwner)) {
-            throw new RuntimeException("Нямате права да управлявате категории за този ресторант");
+            throw new RuntimeException("Нямате права да управлявате локации за този ресторант");
         }
 
-        CategoryAvailability categoryAvailability = categoryAvailabilityRepository
-                .findByRestaurantIdAndCategory(restaurantId, category)
+        LocationAvailability locationAvailability = locationAvailabilityRepository
+                .findByRestaurantIdAndLocation(restaurantId, location)
                 .orElseGet(() -> {
                     // Ако няма запис, създаваме нов
-                    CategoryAvailability newEntry = CategoryAvailability.builder()
+                    LocationAvailability newEntry = LocationAvailability.builder()
                             .restaurant(restaurant)
-                            .category(category)
+                            .location(location)
                             .enabled(enabled)
                             .build();
-                    return categoryAvailabilityRepository.save(newEntry);
+                    return locationAvailabilityRepository.save(newEntry);
                 });
 
-        categoryAvailability.setEnabled(enabled);
-        categoryAvailabilityRepository.save(categoryAvailability);
+        locationAvailability.setEnabled(enabled);
+        locationAvailabilityRepository.save(locationAvailability);
 
-        log.info("Категория {} за ресторант {} е {} от потребител {}", 
-                category, restaurantId, enabled ? "активирана" : "деактивирана", userId);
+        log.info("Локация {} за ресторант {} е {} от потребител {}", 
+                location, restaurantId, enabled ? "активирана" : "деактивирана", userId);
     }
 
-    public List<com.quicktable.restaurantservice.dto.CategoryAvailabilityResponse> getCategoryAvailability(Long restaurantId) {
-        return categoryAvailabilityRepository.findByRestaurantId(restaurantId).stream()
-                .map(this::mapToCategoryAvailabilityResponse)
+    public List<com.quicktable.restaurantservice.dto.LocationAvailabilityResponse> getLocationAvailability(Long restaurantId) {
+        return locationAvailabilityRepository.findByRestaurantId(restaurantId).stream()
+                .map(this::mapToLocationAvailabilityResponse)
                 .collect(java.util.stream.Collectors.toList());
     }
 
-    private com.quicktable.restaurantservice.dto.CategoryAvailabilityResponse mapToCategoryAvailabilityResponse(CategoryAvailability entity) {
-        return com.quicktable.restaurantservice.dto.CategoryAvailabilityResponse.builder()
+    private com.quicktable.restaurantservice.dto.LocationAvailabilityResponse mapToLocationAvailabilityResponse(LocationAvailability entity) {
+        return com.quicktable.restaurantservice.dto.LocationAvailabilityResponse.builder()
                 .id(entity.getId())
                 .restaurantId(entity.getRestaurant().getId())
-                .category(entity.getCategory())
+                .location(entity.getLocation())
                 .enabled(entity.getEnabled())
                 .build();
     }
 
-    public boolean isCategoryEnabled(Long restaurantId, TableCategory category) {
-        return categoryAvailabilityRepository
-                .findByRestaurantIdAndCategory(restaurantId, category)
-                .map(CategoryAvailability::getEnabled)
-                .orElse(true); // По подразбиране категориите са активни
+    public boolean isLocationEnabled(Long restaurantId, TableLocation location) {
+        return locationAvailabilityRepository
+                .findByRestaurantIdAndLocation(restaurantId, location)
+                .map(LocationAvailability::getEnabled)
+                .orElse(true); // По подразбиране локациите са активни
     }
 }

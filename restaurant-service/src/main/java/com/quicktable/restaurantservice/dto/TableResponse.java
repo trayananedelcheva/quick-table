@@ -1,6 +1,6 @@
 package com.quicktable.restaurantservice.dto;
 
-import com.quicktable.common.dto.TableCategory;
+import com.quicktable.common.dto.TableLocation;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -15,6 +15,6 @@ public class TableResponse {
     private Long id;
     private String tableNumber;
     private Integer capacity;
-    private TableCategory category;
+    private TableLocation location;
     private Boolean available;
 }

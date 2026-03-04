@@ -1,6 +1,6 @@
 package com.quicktable.restaurantservice.dto;
 
-import com.quicktable.common.dto.TableCategory;
+import com.quicktable.common.dto.TableLocation;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -10,10 +10,10 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class CategoryAvailabilityResponse {
+public class LocationAvailabilityResponse {
     
     private Long id;
     private Long restaurantId;
-    private TableCategory category;
+    private TableLocation location;
     private Boolean enabled;
 }
