@@ -35,8 +35,7 @@ Thumbs.db
 # Application properties with secrets
 **/application-local.properties
 **/application-secrets.properties
-**/application.yml
-**/application.properties
+**/application-notif.yml
 
 # Security sensitive files
 **/JwtTokenProvider.java
