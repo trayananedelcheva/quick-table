@@ -35,12 +35,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     Long userId = jwtService.extractUserId(jwt);
                     String userRole = jwtService.extractRole(jwt);
                     String userEmail = jwtService.extractEmail(jwt);
+                    String firstName = jwtService.extractFirstName(jwt);
+                    String lastName = jwtService.extractLastName(jwt);
 
                     // Записваме информацията в request attributes
                     request.setAttribute("userId", userId);
                     request.setAttribute("userRole", userRole);
                     request.setAttribute("userEmail", userEmail);
-                    
+                    request.setAttribute("firstName", firstName);
+                    request.setAttribute("lastName", lastName);
+
                     log.debug("JWT validated for user: {} (ID: {}, Role: {})", userEmail, userId, userRole);
                 }
             } catch (Exception e) {

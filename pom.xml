@@ -25,6 +25,7 @@
         <module>user-service</module>
         <module>restaurant-service</module>
         <module>reservation-service</module>
+        <module>reservation-service-v2</module>
     </modules>
 
     <properties>

@@ -30,5 +30,7 @@ public class RestaurantResponse {
     private Boolean active;
     private Integer totalTables;
     private Integer availableTables;
+    private Double averageRating;
+    private Long reviewCount;
     private Map<String, LocationGroupResponse> locations; // Маси групирани по локация
 }

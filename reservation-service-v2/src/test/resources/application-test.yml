@@ -1,0 +1,67 @@
+spring:
+  application:
+    name: reservation-service-v2-test
+  datasource:
+    url: jdbc:postgresql://localhost:5432/test
+    username: test
+    password: test
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  mail:
+    host: localhost
+    port: 3025
+    properties:
+      mail:
+        smtp:
+          auth: false
+
+server:
+  port: 0
+
+jwt:
+  secret: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+  expiration: 86400000
+
+restaurant-service:
+  url: http://localhost:9999
+
+user-service:
+  url: http://localhost:9998
+
+notification:
+  email:
+    enabled: false
+    from: test@quicktable.com
+    from-name: Quick Table Test
+
+scheduler:
+  reminders:
+    enabled: false
+    cron: "0 0 0 1 1 *"
+  day-before-reminder:
+    enabled: false
+    cron: "0 0 0 1 1 *"
+  auto-complete:
+    enabled: false
+    cron: "0 0 0 1 1 *"
+    hours-after: 3
+  no-show:
+    enabled: false
+    cron: "0 0 0 1 1 *"
+    hours-after: 1
+  review-request:
+    enabled: false
+    cron: "0 0 0 1 1 *"
+
+app:
+  base-url: http://localhost:3000
+
+logging:
+  level:
+    com.quicktable: WARN

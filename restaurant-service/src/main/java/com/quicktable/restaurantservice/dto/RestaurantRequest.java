@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Map;
 
 @Data
 @Builder
@@ -40,5 +41,10 @@ public class RestaurantRequest {
 
     private Long adminUserId;
 
+    // Маси групирани по локация: "INSIDE" -> [маси], "SUMMER_GARDEN" -> [маси]
+    private Map<String, List<TableRequest>> locations;
+    
+    // Запазваме за обратна съвместимост (deprecated)
+    @Deprecated
     private List<TableRequest> tables;
 }

@@ -22,6 +22,7 @@ public class TableRequest {
     @Min(value = 1, message = "Капацитетът трябва да е поне 1")
     private Integer capacity;
 
-    @NotNull(message = "Локацията е задължителна")
+    // Optional при групирана структура (location е ключ в map-a)
+    // Required при плоска структура (addTable endpoint)
     private TableLocation location;
 }

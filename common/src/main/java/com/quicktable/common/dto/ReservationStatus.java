@@ -1,9 +1,9 @@
 package com.quicktable.common.dto;
 
 public enum ReservationStatus {
-    PENDING,        // Изчаква потвърждение
-    CONFIRMED,      // Потвърдена
+    CONFIRMED,      // Потвърдена (начален статус при създаване)
     CANCELLED,      // Отказана от клиента
     REJECTED,       // Отхвърлена от ресторанта
-    COMPLETED       // Завършена (клиентът е посетил ресторанта)
+    COMPLETED,      // Завършена (клиентът е посетил ресторанта)
+    NO_SHOW         // Клиентът не се е явил
 }

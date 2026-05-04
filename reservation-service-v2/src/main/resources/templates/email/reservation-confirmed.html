@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+</head>
+<body>
+    <p>Здравейте, <span th:text="${recipientName}"></span>!</p>
+    <p>Вашата резервация е потвърдена.</p>
+    <ul>
+        <li>Ресторант: <strong th:text="${restaurantName}"></strong></li>
+        <li>Дата: <strong th:text="${reservationDate}"></strong></li>
+        <li>Час: <strong th:text="${reservationTime}"></strong></li>
+        <li>Брой гости: <strong th:text="${numberOfGuests}"></strong></li>
+        <li th:if="${specialRequests}">Специални изисквания: <span th:text="${specialRequests}"></span></li>
+    </ul>
+    <p>Очакваме ви!</p>
+    <p>Екипът на Quick Table</p>
+</body>
+</html>

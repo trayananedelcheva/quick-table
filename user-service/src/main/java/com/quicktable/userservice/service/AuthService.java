@@ -51,11 +51,13 @@ public class AuthService {
         user = userRepository.save(user);
 
         UserDetails userDetails = userDetailsService.loadUserByUsername(user.getEmail());
-        
-        // Добавяме userId и role като claims в JWT токена
+
+        // Добавяме userId, role и имена като claims в JWT токена
         Map<String, Object> claims = new HashMap<>();
         claims.put("userId", user.getId());
         claims.put("role", user.getRole().name());
+        claims.put("firstName", user.getFirstName());
+        claims.put("lastName", user.getLastName());
         String token = jwtTokenProvider.generateToken(claims, userDetails);
 
         return AuthResponse.builder()
@@ -80,11 +82,13 @@ public class AuthService {
                 .orElseThrow(() -> new RuntimeException("Потребител не е намерен"));
 
         UserDetails userDetails = userDetailsService.loadUserByUsername(user.getEmail());
-        
-        // Добавяме userId и role като claims в JWT токена
+
+        // Добавяме userId, role и имена като claims в JWT токена
         Map<String, Object> claims = new HashMap<>();
         claims.put("userId", user.getId());
         claims.put("role", user.getRole().name());
+        claims.put("firstName", user.getFirstName());
+        claims.put("lastName", user.getLastName());
         String token = jwtTokenProvider.generateToken(claims, userDetails);
 
         return AuthResponse.builder()

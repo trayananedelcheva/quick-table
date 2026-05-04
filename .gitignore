@@ -40,3 +40,7 @@ Thumbs.db
 
 # Security sensitive files
 **/JwtTokenProvider.java
+
+# Environment variables
+.env
+**/.env

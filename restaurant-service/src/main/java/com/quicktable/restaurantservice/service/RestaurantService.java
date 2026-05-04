@@ -8,6 +8,7 @@ import com.quicktable.restaurantservice.entity.RestaurantTable;
 import com.quicktable.restaurantservice.repository.LocationAvailabilityRepository;
 import com.quicktable.restaurantservice.repository.RestaurantRepository;
 import com.quicktable.restaurantservice.repository.RestaurantTableRepository;
+import com.quicktable.restaurantservice.repository.ReviewRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -16,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -26,6 +28,7 @@ public class RestaurantService {
     private final RestaurantRepository restaurantRepository;
     private final RestaurantTableRepository tableRepository;
     private final LocationAvailabilityRepository locationAvailabilityRepository;
+    private final ReviewRepository reviewRepository;
     private final GeocodingService geocodingService;
 
     @Transactional
@@ -57,9 +60,44 @@ public class RestaurantService {
                 .tables(new ArrayList<>())
                 .build();
 
-        // Добавяне на маси
-        if (request.getTables() != null && !request.getTables().isEmpty()) {
+        // Добавяне на маси - поддържаме и двете структури
+        
+        // НОВА СТРУКТУРА: locations map (препоръчителна)
+        if (request.getLocations() != null && !request.getLocations().isEmpty()) {
+            log.info("Обработка на маси от групирана структура (locations map)");
+            for (Map.Entry<String, List<TableRequest>> entry : request.getLocations().entrySet()) {
+                String locationKey = entry.getKey();
+                List<TableRequest> tablesInLocation = entry.getValue();
+                
+                // Валидиране на location key
+                TableLocation location;
+                try {
+                    location = TableLocation.valueOf(locationKey);
+                } catch (IllegalArgumentException e) {
+                    throw new RuntimeException("Невалидна локация: " + locationKey + 
+                        ". Валидни стойности: INSIDE, SUMMER_GARDEN, WINTER_GARDEN");
+                }
+                
+                // Добавяне на маси за тази локация
+                for (TableRequest tableRequest : tablesInLocation) {
+                    RestaurantTable table = RestaurantTable.builder()
+                            .restaurant(restaurant)
+                            .tableNumber(tableRequest.getTableNumber())
+                            .capacity(tableRequest.getCapacity())
+                            .location(location) // Използваме location от ключа
+                            .available(true)
+                            .build();
+                    restaurant.getTables().add(table);
+                }
+            }
+        }
+        // СТАРА СТРУКТУРА: плоска tables list (обратна съвместимост)
+        else if (request.getTables() != null && !request.getTables().isEmpty()) {
+            log.info("Обработка на маси от плоска структура (tables list) - deprecated");
             for (TableRequest tableRequest : request.getTables()) {
+                if (tableRequest.getLocation() == null) {
+                    throw new RuntimeException("При плоска структура location е задължително поле");
+                }
                 RestaurantTable table = RestaurantTable.builder()
                         .restaurant(restaurant)
                         .tableNumber(tableRequest.getTableNumber())
@@ -224,7 +262,15 @@ public class RestaurantService {
     }
 
     public List<TableResponse> getRestaurantTables(Long restaurantId) {
+        // Намираме disabled локациите за този ресторант
+        List<LocationAvailability> availabilities = locationAvailabilityRepository.findByRestaurantId(restaurantId);
+        java.util.Set<TableLocation> disabledLocations = availabilities.stream()
+                .filter(a -> !Boolean.TRUE.equals(a.getEnabled()))
+                .map(LocationAvailability::getLocation)
+                .collect(Collectors.toSet());
+
         return tableRepository.findByRestaurantId(restaurantId).stream()
+                .filter(table -> !disabledLocations.contains(table.getLocation()))
                 .map(this::mapToTableResponse)
                 .collect(Collectors.toList());
     }
@@ -243,14 +289,14 @@ public class RestaurantService {
             return Collections.emptyList();
         }
 
-        // Генерираме всички възможни часове от opening до closing (на всеки час)
+        // Генерираме слотове на всеки 30 минути от opening до closing - 1 час
         List<String> allPossibleSlots = new ArrayList<>();
         java.time.LocalTime currentTime = restaurant.getOpeningTime();
-        java.time.LocalTime closingTime = restaurant.getClosingTime().minusHours(2); // -2 часа за резервация
+        java.time.LocalTime lastSlot = restaurant.getClosingTime().minusHours(1);
 
-        while (currentTime.isBefore(closingTime) || currentTime.equals(closingTime)) {
+        while (currentTime.isBefore(lastSlot) || currentTime.equals(lastSlot)) {
             allPossibleSlots.add(currentTime.toString());
-            currentTime = currentTime.plusHours(1);
+            currentTime = currentTime.plusMinutes(30);
         }
 
         log.info("Проверка за налични времеви слотове за ресторант {} на дата {} за {} гости",
@@ -338,7 +384,9 @@ public class RestaurantService {
                 .active(restaurant.getActive())
                 .totalTables(restaurant.getTables().size())
                 .availableTables((int) restaurant.getTables().stream()
-                        .filter(RestaurantTable::getAvailable).count());
+                        .filter(RestaurantTable::getAvailable).count())
+                .averageRating(reviewRepository.findAverageRatingByRestaurantId(restaurant.getId()))
+                .reviewCount(reviewRepository.countByRestaurantId(restaurant.getId()));
 
         if (includeTables) {
             // Групиране на маси по локация
