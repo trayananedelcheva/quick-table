@@ -1,0 +1,88 @@
+spring:
+  application:
+    name: reservation-service
+  datasource:
+    url: jdbc:postgresql://localhost:5432/quicktable_reservations
+    username: postgres
+    password: L1nuxI$Th3B3stO$
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+  # Email Configuration
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${EMAIL_USERNAME:your-email@gmail.com}
+    password: ${EMAIL_PASSWORD:your-app-password}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+
+server:
+  port: 8083
+
+# Actuator Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,scheduledtasks,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
+
+jwt:
+  secret: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+  expiration: 86400000
+
+restaurant-service:
+  url: http://localhost:8082
+
+# Notification settings
+notification:
+  email:
+    enabled: true
+    from: noreply@quicktable.com
+    from-name: Quick Table
+
+# Scheduler settings
+scheduler:
+  reminders:
+    enabled: true
+    cron: "0 0,30 * * * *"  # На всеки 30 минути, в :00 и :30
+  day-before-reminder:
+    enabled: true
+    cron: "0 0,30 * * * *"  # На всеки 30 минути, в :00 и :30
+  auto-complete:
+    enabled: true
+    cron: "0 */30 * * * *"  # Every 30 minutes
+    hours-after: 3  # Complete reservation 3 hours after start
+  no-show:
+    enabled: true
+    cron: "0 15 * * * *"  # Every hour at :15
+    hours-after: 1  # Mark as no-show 1 hour after start
+  review-request:
+    enabled: true
+    cron: "0 0 10 * * *"  # Всеки ден в 10:00
+
+app:
+  base-url: http://localhost:3000
+
+logging:
+  level:
+    com.quicktable: DEBUG
+

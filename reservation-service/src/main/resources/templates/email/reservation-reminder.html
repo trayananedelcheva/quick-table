@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+        }
+        .content {
+            padding: 30px;
+            color: #333;
+        }
+        .content h2 {
+            color: #ff9800;
+            margin-top: 0;
+        }
+        .info-box {
+            background-color: #fff8e1;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .info-row {
+            margin: 10px 0;
+        }
+        .info-label {
+            font-weight: bold;
+            color: #555;
+        }
+        .info-value {
+            color: #333;
+        }
+        .footer {
+            background-color: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            color: #777;
+            font-size: 12px;
+        }
+        .reminder-icon {
+            font-size: 48px;
+            color: #ffc107;
+            text-align: center;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🍽️ Quick Table</h1>
+        </div>
+        <div class="content">
+            <div class="reminder-icon">⏰</div>
+            <h2>Напомняне за резервация</h2>
+            <p>Здравейте, <strong th:text="${recipientName}">Customer</strong>!</p>
+            <p><strong>Вашата резервация е след 2 часа!</strong></p>
+            <p>Напомняме ви за предстоящата резервация:</p>
+
+            <div class="info-box">
+                <div class="info-row">
+                    <span class="info-label">📍 Ресторант:</span>
+                    <span class="info-value" th:text="${restaurantName}">Restaurant Name</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">📅 Дата:</span>
+                    <span class="info-value" th:text="${reservationDate}">01.01.2024</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">🕐 Час:</span>
+                    <span class="info-value" th:text="${reservationTime}">19:00</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">👥 Брой гости:</span>
+                    <span class="info-value" th:text="${numberOfGuests}">4</span>
+                </div>
+            </div>
+
+            <p>Очакваме ви навреме! При промяна в плановете ви, моля отменете резервацията предварително.</p>
+            <p>Приятен апетит!</p>
+        </div>
+        <div class="footer">
+            <p>Quick Table - Системата за управление на ресторантски резервации</p>
+        </div>
+    </div>
+</body>
+</html>

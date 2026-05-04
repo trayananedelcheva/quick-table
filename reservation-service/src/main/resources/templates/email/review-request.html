@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+        }
+        .content {
+            padding: 30px;
+            color: #333;
+        }
+        .content h2 {
+            color: #d97706;
+            margin-top: 0;
+        }
+        .info-box {
+            background-color: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 0 4px 4px 0;
+        }
+        .info-box p {
+            margin: 5px 0;
+            color: #555;
+        }
+        .stars {
+            font-size: 36px;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .btn {
+            display: block;
+            width: fit-content;
+            margin: 25px auto;
+            padding: 14px 32px;
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        .footer {
+            background-color: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            color: #777;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🍽️ Quick Table</h1>
+        </div>
+        <div class="content">
+            <div class="stars">⭐⭐⭐⭐⭐</div>
+            <h2>Как беше посещението?</h2>
+            <p>Здравейте, <strong th:text="${recipientName}">Customer</strong>!</p>
+            <p>Надяваме се, че се насладихте на посещението си в <strong th:text="${restaurantName}">Restaurant</strong>. Вашето мнение е важно!</p>
+            <div class="info-box">
+                <p><strong>Ресторант:</strong> <span th:text="${restaurantName}">Restaurant</span></p>
+                <p><strong>Дата:</strong> <span th:text="${reservationDate}">01.01.2026</span></p>
+                <p><strong>Час:</strong> <span th:text="${reservationTime}">19:00</span></p>
+            </div>
+            <p>Отделете минута и оставете оценка и коментар — помагате на другите да открият страхотни места!</p>
+            <a th:href="${reviewUrl}" class="btn">Оставете оценка</a>
+            <p style="font-size: 13px; color: #999; text-align: center;">
+                Ако бутонът не работи, копирайте линка: <span th:text="${reviewUrl}"></span>
+            </p>
+        </div>
+        <div class="footer">
+            <p>Quick Table - Системата за управление на ресторантски резервации</p>
+        </div>
+    </div>
+</body>
+</html>

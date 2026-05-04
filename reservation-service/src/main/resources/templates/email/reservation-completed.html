@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+        }
+        .content {
+            padding: 30px;
+            color: #333;
+        }
+        .content h2 {
+            color: #495057;
+            margin-top: 0;
+        }
+        .footer {
+            background-color: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            color: #777;
+            font-size: 12px;
+        }
+        .completed-icon {
+            font-size: 48px;
+            text-align: center;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🍽️ Quick Table</h1>
+        </div>
+        <div class="content">
+            <div class="completed-icon">🎉</div>
+            <h2>Благодарим за посещението!</h2>
+            <p>Здравейте, <strong th:text="${recipientName}">Customer</strong>!</p>
+            <p>Надяваме се, че се насладихте на посещението си в <strong th:text="${restaurantName}">Restaurant</strong>!</p>
+            <p>Ще се радваме да ви видим отново скоро.</p>
+            <p>Ако желаете, можете да споделите вашето мнение за посещението.</p>
+        </div>
+        <div class="footer">
+            <p>Quick Table - Системата за управление на ресторантски резервации</p>
+        </div>
+    </div>
+</body>
+</html>
