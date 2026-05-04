@@ -51,11 +51,8 @@ restaurant-service:
 user-service:
   url: http://localhost:8081
 
-notification:
-  email:
-    enabled: true
-    from: ${EMAIL_USERNAME}
-    from-name: Quick Table
+notification-service:
+  url: http://localhost:3001
 
 scheduler:
   reminders:
