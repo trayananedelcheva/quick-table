@@ -26,7 +26,7 @@ public class RestaurantResponse {
     private String email;
     private LocalTime openingTime;
     private LocalTime closingTime;
-    private Long adminUserId;
+    private Long ownerId;
     private Boolean active;
     private Integer totalTables;
     private Integer availableTables;

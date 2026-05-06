@@ -1,0 +1,12 @@
+<h2>Здравейте, {{recipientName}}!</h2>
+<p>Вашата резервация е успешно потвърдена. Очакваме ви!</p>
+<table>
+    <tr><td><strong>Ресторант:</strong></td><td>{{restaurantName}}</td></tr>
+    <tr><td><strong>Дата:</strong></td><td>{{reservationDate}}</td></tr>
+    <tr><td><strong>Час:</strong></td><td>{{reservationTime}}</td></tr>
+    <tr><td><strong>Гости:</strong></td><td>{{numberOfGuests}}</td></tr>
+    {{#if specialRequests}}
+    <tr><td><strong>Специални изисквания:</strong></td><td>{{specialRequests}}</td></tr>
+    {{/if}}
+</table>
+<p>Благодарим ви, че избрахте Quick Table!</p>

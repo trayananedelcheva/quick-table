@@ -15,7 +15,10 @@ import java.util.Map;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class RestaurantRequest {
+public class AdminRestaurantRequest {
+
+    @NotNull(message = "ID на собственика е задължително.")
+    private Long ownerId;
 
     @NotBlank(message = "Името е задължително.")
     private String name;
@@ -39,10 +42,5 @@ public class RestaurantRequest {
     @NotNull(message = "Времето за затваряне е задължително.")
     private LocalTime closingTime;
 
-    // Маси групирани по локация: "INSIDE" -> [маси], "SUMMER_GARDEN" -> [маси]
     private Map<String, List<TableRequest>> locations;
-
-    // Запазваме за обратна съвместимост (deprecated)
-    @Deprecated
-    private List<TableRequest> tables;
 }

@@ -13,5 +13,5 @@ public interface RestaurantRepository extends JpaRepository<Restaurant, Long> {
     
     List<Restaurant> findByCityAndActiveTrue(String city);
     
-    List<Restaurant> findByAdminUserId(Long adminUserId);
+    List<Restaurant> findByOwnerId(Long ownerId);
 }

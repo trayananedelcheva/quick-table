@@ -4,7 +4,7 @@ import com.quicktable.common.dto.UserRole;
 import com.quicktable.userservice.dto.AuthResponse;
 import com.quicktable.userservice.dto.LoginRequest;
 import com.quicktable.userservice.dto.RegisterRequest;
-import com.quicktable.userservice.dto.UserResponse;
+import com.quicktable.userservice.exception.EmailAlreadyExistsException;
 import com.quicktable.userservice.entity.User;
 import com.quicktable.userservice.repository.UserRepository;
 import com.quicktable.userservice.security.JwtTokenProvider;
@@ -33,7 +33,7 @@ public class AuthService {
     @Transactional
     public AuthResponse register(RegisterRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Email вече съществува");
+            throw new EmailAlreadyExistsException("Потребител с този имейл вече съществува. Моля, посочете друг имейл за регистрация.");
         }
 
         // SECURITY: Всички нови потребители са CLIENT по подразбиране

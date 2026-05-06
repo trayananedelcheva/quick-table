@@ -1,0 +1,13 @@
+<h2>Здравейте, {{recipientName}}!</h2>
+<p>Вашата резервация беше отказана по ваше желание.</p>
+<table>
+    <tr><td><strong>Ресторант:</strong></td><td>{{restaurantName}}</td></tr>
+    <tr><td><strong>Дата:</strong></td><td>{{reservationDate}}</td></tr>
+    <tr><td><strong>Час:</strong></td><td>{{reservationTime}}</td></tr>
+    <tr><td><strong>Гости:</strong></td><td>{{numberOfGuests}}</td></tr>
+    {{#if specialRequests}}
+    <tr><td><strong>Специални изисквания:</strong></td><td>{{specialRequests}}</td></tr>
+    {{/if}}
+</table>
+<p>Ако желаете, можете да направите нова резервация по всяко време.</p>
+<p>Благодарим ви, че използвате Quick Table!</p>

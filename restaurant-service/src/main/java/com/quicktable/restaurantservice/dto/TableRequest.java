@@ -15,14 +15,12 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class TableRequest {
 
-    @NotBlank(message = "Номерът на масата е задължителен")
+    @NotBlank(message = "Номерът на масата е задължителен.")
     private String tableNumber;
 
-    @NotNull(message = "Капацитетът е задължителен")
-    @Min(value = 1, message = "Капацитетът трябва да е поне 1")
+    @NotNull(message = "Капацитетът е задължителен.")
+    @Min(value = 1, message = "Капацитетът трябва да е поне 1.")
     private Integer capacity;
 
-    // Optional при групирана структура (location е ключ в map-a)
-    // Required при плоска структура (addTable endpoint)
     private TableLocation location;
 }

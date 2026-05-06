@@ -14,12 +14,12 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class ReviewRequest {
 
-    @NotNull(message = "ID на резервацията е задължително")
+    @NotNull(message = "ID на резервацията е задължително.")
     private Long reservationId;
 
-    @NotNull(message = "Оценката е задължителна")
-    @Min(value = 1, message = "Оценката трябва да е между 1 и 5")
-    @Max(value = 5, message = "Оценката трябва да е между 1 и 5")
+    @NotNull(message = "Оценката е задължителна.")
+    @Min(value = 1, message = "Оценката трябва да е между 1 и 5.")
+    @Max(value = 5, message = "Оценката трябва да е между 1 и 5.")
     private Integer rating;
 
     private String comment;

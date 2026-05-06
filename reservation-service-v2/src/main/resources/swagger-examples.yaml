@@ -1,0 +1,37 @@
+schemas:
+  ReservationRequest:
+    restaurantId: 16
+    reservationDate: "2026-05-20"
+    reservationTime: "19:00:00"
+    guestsCount: 2
+    preferredLocation: "INSIDE"
+    specialRequests: "До прозореца, ако е възможно"
+  RejectReservationRequest:
+    reason: "Ресторантът е зает за частно събитие на тази дата."
+
+paths:
+  /api/reservations/{id}:
+    get:
+      id: 1
+    delete:
+      id: 1
+  /api/reservations/{id}/reject:
+    patch:
+      id: 1
+  /api/reservations/{id}/complete:
+    patch:
+      id: 1
+  /api/reservations/{id}/no-show:
+    patch:
+      id: 1
+  /api/reservations/restaurant/{restaurantId}:
+    get:
+      restaurantId: 16
+      date: "2026-05-20"
+      status: "CONFIRMED"
+  /api/reservations/restaurant/{restaurantId}/available-slots:
+    get:
+      restaurantId: 16
+      date: "2026-05-20"
+      guestsCount: 2
+      location: "INSIDE"

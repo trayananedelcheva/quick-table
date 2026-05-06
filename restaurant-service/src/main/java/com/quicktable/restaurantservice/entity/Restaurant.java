@@ -50,8 +50,9 @@ public class Restaurant {
 
     private LocalTime closingTime;
 
-    // ID на администратора на ресторанта от User Service
-    private Long adminUserId;
+    // ID на собственика на ресторанта от User Service
+    @Column(name = "admin_user_id")
+    private Long ownerId;
 
     @Column(nullable = false)
     private Boolean active;

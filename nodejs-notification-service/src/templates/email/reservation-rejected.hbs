@@ -1,0 +1,15 @@
+<h2>Здравейте, {{recipientName}}!</h2>
+<p>За съжаление ресторант <strong>{{restaurantName}}</strong> не може да потвърди вашата резервация.</p>
+{{#if rejectionReason}}
+<p><strong>Причина:</strong> {{rejectionReason}}</p>
+{{/if}}
+<table>
+    <tr><td><strong>Ресторант:</strong></td><td>{{restaurantName}}</td></tr>
+    <tr><td><strong>Дата:</strong></td><td>{{reservationDate}}</td></tr>
+    <tr><td><strong>Час:</strong></td><td>{{reservationTime}}</td></tr>
+    <tr><td><strong>Гости:</strong></td><td>{{numberOfGuests}}</td></tr>
+</table>
+<p>Извиняваме се за неудобството. В знак на извинение ви предлагаме <strong>15% отстъпка</strong> от цялата сметка при следваща резервация в <strong>{{restaurantName}}</strong>.</p>
+<p>Вашият код за отстъпка: <strong style="font-size:1.2em; color:#e05c00;">GIFT-15-OFF</strong></p>
+<p><em>Кодът е валиден при представяне на този имейл на персонала на ресторанта.</em></p>
+<p>Можете да потърсите друг подходящ ресторант в Quick Table.</p>

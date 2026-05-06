@@ -19,4 +19,6 @@ public class NotificationData {
     private LocalTime reservationTime;
     private Integer numberOfGuests;
     private String specialRequests;
+    private String rejectionReason;
+    private String reviewUrl;
 }

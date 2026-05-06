@@ -1,0 +1,38 @@
+operationExamples:
+  /api/auth/register:
+    post:
+      Trayana 7:
+        email: "trayananedelcheva7@gmail.com"
+        password: "password123"
+        firstName: "Trayana"
+        lastName: "Nedelcheva"
+        phoneNumber: "+359883552567"
+      Trayana:
+        email: "trayananedelcheva@gmail.com"
+        password: "password123"
+        firstName: "Trayana"
+        lastName: "Nedelcheva"
+        phoneNumber: "+359883552567"
+  /api/auth/login:
+    post:
+      Trayana 7:
+        email: "trayananedelcheva7@gmail.com"
+        password: "password123"
+      Trayana:
+        email: "trayananedelcheva@gmail.com"
+        password: "password123"
+      Admin:
+        email: "admin@gmail.com"
+        password: "admin123"
+
+paths:
+  /api/users:
+    get:
+      role: "CLIENT"
+  /api/users/{userId}:
+    get:
+      userId: "2"
+  /api/users/{userId}/role:
+    put:
+      userId: "3"
+      role: "RESTAURANT_ADMIN"

@@ -1,0 +1,17 @@
+<h2>Здравейте, {{recipientName}}!</h2>
+<p>Надяваме се, че сте се насладили на вечерята си в <strong>{{restaurantName}}</strong>!</p>
+<table>
+    <tr><td><strong>Ресторант:</strong></td><td>{{restaurantName}}</td></tr>
+    <tr><td><strong>Дата:</strong></td><td>{{reservationDate}}</td></tr>
+    <tr><td><strong>Час:</strong></td><td>{{reservationTime}}</td></tr>
+    <tr><td><strong>Гости:</strong></td><td>{{numberOfGuests}}</td></tr>
+</table>
+<p>Вашето мнение е важно за нас и за ресторанта. Отделете минута, за да споделите впечатленията си:</p>
+{{#if reviewUrl}}
+<p>
+    <a href="{{reviewUrl}}" style="background-color:#e05c00; color:white; padding:10px 20px; text-decoration:none; border-radius:5px; display:inline-block;">
+        Напишете ревю
+    </a>
+</p>
+{{/if}}
+<p>Благодарим ви, че избрахте Quick Table!</p>

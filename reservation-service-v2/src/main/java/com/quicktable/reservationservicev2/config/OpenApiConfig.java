@@ -1,4 +1,4 @@
-package com.quicktable.userservice.config;
+package com.quicktable.reservationservicev2.config;
 
 import io.swagger.v3.oas.annotations.enums.SecuritySchemeType;
 import io.swagger.v3.oas.annotations.security.SecurityScheme;
@@ -17,8 +17,8 @@ public class OpenApiConfig {
     public OpenAPI openAPI() {
         return new OpenAPI()
                 .info(new Info()
-                        .title("User Service API")
-                        .description("API за автентикация и управление на потребители в Quick Table")
-                        .version("1.0.0"));
+                        .title("Reservation Service API")
+                        .version("2.0")
+                        .description("API за управление на резервации"));
     }
 }

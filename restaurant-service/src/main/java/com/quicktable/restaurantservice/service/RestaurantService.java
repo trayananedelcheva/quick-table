@@ -35,91 +35,91 @@ public class RestaurantService {
     public RestaurantResponse createRestaurant(RestaurantRequest request, Long userId, String userRole) {
         log.info("Създаване на ресторант: {} от потребител {} с роля {}", request.getName(), userId, userRole);
 
-        // BUSINESS RULE: Само RESTAURANT_ADMIN и SYSTEM_ADMIN могат да създават ресторанти
-        if (!"RESTAURANT_ADMIN".equals(userRole) && !"SYSTEM_ADMIN".equals(userRole)) {
+        if (!"RESTAURANT_ADMIN".equals(userRole)) {
             throw new RuntimeException("Нямате права да създавате ресторант");
         }
 
-        // Геокодиране на адреса с външна услуга (Nominatim API)
-        GeoLocation geoLocation = geocodingService.geocodeAddress(request.getAddress());
+        return buildAndSaveRestaurant(request.getName(), request.getDescription(), request.getAddress(),
+                request.getCity(), request.getCountry(), request.getPhone(), request.getEmail(),
+                request.getOpeningTime(), request.getClosingTime(), request.getLocations(), null, userId);
+    }
+
+    @Transactional
+    public RestaurantResponse createRestaurantAsAdmin(AdminRestaurantRequest request, Long adminId) {
+        log.info("Администратор {} създава ресторант: {} за потребител {}", adminId, request.getName(), request.getOwnerId());
+
+        return buildAndSaveRestaurant(request.getName(), request.getDescription(), request.getAddress(),
+                request.getCity(), request.getCountry(), request.getPhone(), request.getEmail(),
+                request.getOpeningTime(), request.getClosingTime(), request.getLocations(), null, request.getOwnerId());
+    }
+
+    private RestaurantResponse buildAndSaveRestaurant(String name, String description, String address,
+                                                       String city, String country, String phone, String email,
+                                                       java.time.LocalTime openingTime, java.time.LocalTime closingTime,
+                                                       Map<String, List<TableRequest>> locations,
+                                                       List<TableRequest> tables, Long ownerId) {
+        GeoLocation geoLocation = geocodingService.geocodeAddress(address);
 
         Restaurant restaurant = Restaurant.builder()
-                .name(request.getName())
-                .description(request.getDescription())
-                .address(request.getAddress())
-                .city(geoLocation != null ? geoLocation.getCity() : request.getCity())
-                .country(geoLocation != null ? geoLocation.getCountry() : request.getCountry())
+                .name(name)
+                .description(description)
+                .address(address)
+                .city(geoLocation != null ? geoLocation.getCity() : city)
+                .country(geoLocation != null ? geoLocation.getCountry() : country)
                 .latitude(geoLocation != null ? geoLocation.getLatitude() : null)
                 .longitude(geoLocation != null ? geoLocation.getLongitude() : null)
-                .phone(request.getPhone())
-                .email(request.getEmail())
-                .openingTime(request.getOpeningTime())
-                .closingTime(request.getClosingTime())
-                .adminUserId(userId) // Автоматично задаваме от JWT
+                .phone(phone)
+                .email(email)
+                .openingTime(openingTime)
+                .closingTime(closingTime)
+                .ownerId(ownerId)
                 .active(true)
                 .tables(new ArrayList<>())
                 .build();
 
-        // Добавяне на маси - поддържаме и двете структури
-        
-        // НОВА СТРУКТУРА: locations map (препоръчителна)
-        if (request.getLocations() != null && !request.getLocations().isEmpty()) {
-            log.info("Обработка на маси от групирана структура (locations map)");
-            for (Map.Entry<String, List<TableRequest>> entry : request.getLocations().entrySet()) {
-                String locationKey = entry.getKey();
-                List<TableRequest> tablesInLocation = entry.getValue();
-                
-                // Валидиране на location key
+        if (locations != null && !locations.isEmpty()) {
+            for (Map.Entry<String, List<TableRequest>> entry : locations.entrySet()) {
                 TableLocation location;
                 try {
-                    location = TableLocation.valueOf(locationKey);
+                    location = TableLocation.valueOf(entry.getKey());
                 } catch (IllegalArgumentException e) {
-                    throw new RuntimeException("Невалидна локация: " + locationKey + 
-                        ". Валидни стойности: INSIDE, SUMMER_GARDEN, WINTER_GARDEN");
+                    throw new RuntimeException("Невалидна локация: " + entry.getKey() +
+                            ". Валидни стойности: INSIDE, SUMMER_GARDEN, WINTER_GARDEN");
                 }
-                
-                // Добавяне на маси за тази локация
-                for (TableRequest tableRequest : tablesInLocation) {
-                    RestaurantTable table = RestaurantTable.builder()
+                for (TableRequest tableRequest : entry.getValue()) {
+                    restaurant.getTables().add(RestaurantTable.builder()
                             .restaurant(restaurant)
                             .tableNumber(tableRequest.getTableNumber())
                             .capacity(tableRequest.getCapacity())
-                            .location(location) // Използваме location от ключа
+                            .location(location)
                             .available(true)
-                            .build();
-                    restaurant.getTables().add(table);
+                            .build());
                 }
             }
-        }
-        // СТАРА СТРУКТУРА: плоска tables list (обратна съвместимост)
-        else if (request.getTables() != null && !request.getTables().isEmpty()) {
-            log.info("Обработка на маси от плоска структура (tables list) - deprecated");
-            for (TableRequest tableRequest : request.getTables()) {
+        } else if (tables != null && !tables.isEmpty()) {
+            for (TableRequest tableRequest : tables) {
                 if (tableRequest.getLocation() == null) {
                     throw new RuntimeException("При плоска структура location е задължително поле");
                 }
-                RestaurantTable table = RestaurantTable.builder()
+                restaurant.getTables().add(RestaurantTable.builder()
                         .restaurant(restaurant)
                         .tableNumber(tableRequest.getTableNumber())
                         .capacity(tableRequest.getCapacity())
                         .location(tableRequest.getLocation())
                         .available(true)
-                        .build();
-                restaurant.getTables().add(table);
+                        .build());
             }
         }
 
         restaurant = restaurantRepository.save(restaurant);
         log.info("Ресторант създаден с ID: {}", restaurant.getId());
 
-        // Автоматично създаване на LocationAvailability записи за всички локации
         for (TableLocation location : TableLocation.values()) {
-            LocationAvailability locationAvailability = LocationAvailability.builder()
+            locationAvailabilityRepository.save(LocationAvailability.builder()
                     .restaurant(restaurant)
                     .location(location)
-                    .enabled(true) // По подразбиране всички локации са активни
-                    .build();
-            locationAvailabilityRepository.save(locationAvailability);
+                    .enabled(true)
+                    .build());
         }
 
         return mapToResponse(restaurant, true);
@@ -143,8 +143,8 @@ public class RestaurantService {
                 .collect(Collectors.toList());
     }
 
-    public List<RestaurantResponse> getMyRestaurants(Long adminUserId) {
-        return restaurantRepository.findByAdminUserId(adminUserId).stream()
+    public List<RestaurantResponse> getMyRestaurants(Long ownerId) {
+        return restaurantRepository.findByOwnerId(ownerId).stream()
                 .map(r -> mapToResponse(r, false))
                 .collect(Collectors.toList());
     }
@@ -156,7 +156,7 @@ public class RestaurantService {
 
         // BUSINESS RULE: SYSTEM_ADMIN или собственик могат да редактират
         boolean isSystemAdmin = "SYSTEM_ADMIN".equals(userRole);
-        boolean isOwner = restaurant.getAdminUserId().equals(userId);
+        boolean isOwner = restaurant.getOwnerId().equals(userId);
         
         if (!isSystemAdmin && !isOwner) {
             throw new RuntimeException("Нямате права да променяте този ресторант");
@@ -192,7 +192,7 @@ public class RestaurantService {
         
         // BUSINESS RULE: SYSTEM_ADMIN или собственик могат да изтриват
         boolean isSystemAdmin = "SYSTEM_ADMIN".equals(userRole);
-        boolean isOwner = restaurant.getAdminUserId().equals(userId);
+        boolean isOwner = restaurant.getOwnerId().equals(userId);
         
         if (!isSystemAdmin && !isOwner) {
             throw new RuntimeException("Нямате права да изтривате този ресторант");
@@ -211,7 +211,7 @@ public class RestaurantService {
         
         // BUSINESS RULE: SYSTEM_ADMIN или собственик могат да правят hard delete
         boolean isSystemAdmin = "SYSTEM_ADMIN".equals(userRole);
-        boolean isOwner = restaurant.getAdminUserId().equals(userId);
+        boolean isOwner = restaurant.getOwnerId().equals(userId);
         
         if (!isSystemAdmin && !isOwner) {
             throw new RuntimeException("Нямате права да изтривате окончателно този ресторант");
@@ -234,7 +234,7 @@ public class RestaurantService {
 
         // BUSINESS RULE: SYSTEM_ADMIN или собственик могат да добавят маса
         boolean isSystemAdmin = "SYSTEM_ADMIN".equals(userRole);
-        boolean isOwner = restaurant.getAdminUserId().equals(userId);
+        boolean isOwner = restaurant.getOwnerId().equals(userId);
         
         if (!isSystemAdmin && !isOwner) {
             throw new RuntimeException("Нямате права да добавяте маси в този ресторант");
@@ -318,10 +318,10 @@ public class RestaurantService {
         //                RESTAURANT_ADMIN може да променя САМО своя ресторант (където е собственик)
         boolean isSystemAdmin = "SYSTEM_ADMIN".equals(userRole);
         boolean isRestaurantAdmin = "RESTAURANT_ADMIN".equals(userRole);
-        boolean isOwner = restaurant.getAdminUserId().equals(userId);
+        boolean isOwner = restaurant.getOwnerId().equals(userId);
         
         log.info("Проверка за права: userId={}, userRole={}, restaurantAdminUserId={}, isOwner={}", 
-                userId, userRole, restaurant.getAdminUserId(), isOwner);
+                userId, userRole, restaurant.getOwnerId(), isOwner);
         
         // SYSTEM_ADMIN - може да променя всички ресторанти
         // RESTAURANT_ADMIN - може да променя САМО своя ресторант (където adminUserId == userId)
@@ -348,7 +348,7 @@ public class RestaurantService {
 
         // BUSINESS RULE: SYSTEM_ADMIN или собственик могат да променят наличността на маси
         boolean isSystemAdmin = "SYSTEM_ADMIN".equals(userRole);
-        boolean isOwner = restaurant.getAdminUserId().equals(userId);
+        boolean isOwner = restaurant.getOwnerId().equals(userId);
         
         if (!isSystemAdmin && !isOwner) {
             throw new RuntimeException("Нямате права да променяте маси на този ресторант");
@@ -380,7 +380,7 @@ public class RestaurantService {
                 .email(restaurant.getEmail())
                 .openingTime(restaurant.getOpeningTime())
                 .closingTime(restaurant.getClosingTime())
-                .adminUserId(restaurant.getAdminUserId())
+                .ownerId(restaurant.getOwnerId())
                 .active(restaurant.getActive())
                 .totalTables(restaurant.getTables().size())
                 .availableTables((int) restaurant.getTables().stream()
@@ -440,15 +440,15 @@ public class RestaurantService {
     // ==================== УПРАВЛЕНИЕ НА ЛОКАЦИИ ====================
 
     @Transactional
-    public void toggleLocationAvailability(Long restaurantId, TableLocation location, Boolean enabled, 
-                                          Long userId, String userRole) {
+    public com.quicktable.restaurantservice.dto.LocationAvailabilityResponse toggleLocationAvailability(
+            Long restaurantId, TableLocation location, Boolean enabled, Long userId, String userRole) {
         Restaurant restaurant = restaurantRepository.findById(restaurantId)
                 .orElseThrow(() -> new RuntimeException("Ресторант не е намерен"));
 
         // BUSINESS RULE: SYSTEM_ADMIN или собственикът могат да управляват локации
         boolean isSystemAdmin = "SYSTEM_ADMIN".equals(userRole);
         boolean isRestaurantAdmin = "RESTAURANT_ADMIN".equals(userRole);
-        boolean isOwner = restaurant.getAdminUserId().equals(userId);
+        boolean isOwner = restaurant.getOwnerId().equals(userId);
 
         if (!isSystemAdmin && !(isRestaurantAdmin && isOwner)) {
             throw new RuntimeException("Нямате права да управлявате локации за този ресторант");
@@ -457,7 +457,6 @@ public class RestaurantService {
         LocationAvailability locationAvailability = locationAvailabilityRepository
                 .findByRestaurantIdAndLocation(restaurantId, location)
                 .orElseGet(() -> {
-                    // Ако няма запис, създаваме нов
                     LocationAvailability newEntry = LocationAvailability.builder()
                             .restaurant(restaurant)
                             .location(location)
@@ -467,10 +466,12 @@ public class RestaurantService {
                 });
 
         locationAvailability.setEnabled(enabled);
-        locationAvailabilityRepository.save(locationAvailability);
+        locationAvailability = locationAvailabilityRepository.save(locationAvailability);
 
-        log.info("Локация {} за ресторант {} е {} от потребител {}", 
+        log.info("Локация {} за ресторант {} е {} от потребител {}",
                 location, restaurantId, enabled ? "активирана" : "деактивирана", userId);
+
+        return mapToLocationAvailabilityResponse(locationAvailability);
     }
 
     public List<com.quicktable.restaurantservice.dto.LocationAvailabilityResponse> getLocationAvailability(Long restaurantId) {

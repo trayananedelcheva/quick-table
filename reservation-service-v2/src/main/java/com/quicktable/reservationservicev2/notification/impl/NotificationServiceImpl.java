@@ -41,6 +41,12 @@ public class NotificationServiceImpl implements NotificationService {
             request.put("reservationTime", data.getReservationTime().format(DateTimeFormatter.ofPattern("HH:mm")));
             request.put("numberOfGuests", data.getNumberOfGuests());
             request.put("specialRequests", data.getSpecialRequests() != null ? data.getSpecialRequests() : "");
+            if (data.getRejectionReason() != null) {
+                request.put("rejectionReason", data.getRejectionReason());
+            }
+            if (data.getReviewUrl() != null) {
+                request.put("reviewUrl", data.getReviewUrl());
+            }
 
             webClient.post()
                     .uri("/api/notifications/send")

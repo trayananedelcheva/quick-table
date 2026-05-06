@@ -3,6 +3,8 @@ package com.quicktable.restaurantservice.controller;
 import com.quicktable.restaurantservice.dto.ReviewRequest;
 import com.quicktable.restaurantservice.dto.ReviewResponse;
 import com.quicktable.restaurantservice.service.ReviewService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +21,8 @@ public class ReviewController {
 
     private final ReviewService reviewService;
 
+    @Operation(summary = "[Client] Add review for restaurant", tags = {"Client"})
+    @SecurityRequirement(name = "Client")
     @PostMapping
     public ResponseEntity<ReviewResponse> addReview(
             HttpServletRequest request,
@@ -40,6 +44,7 @@ public class ReviewController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    @Operation(summary = "[Public] Get reviews for restaurant", tags = {"Public"})
     @GetMapping
     public ResponseEntity<List<ReviewResponse>> getReviews(@PathVariable Long restaurantId) {
         return ResponseEntity.ok(reviewService.getReviewsByRestaurant(restaurantId));

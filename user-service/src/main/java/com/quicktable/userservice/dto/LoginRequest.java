@@ -13,10 +13,10 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class LoginRequest {
 
-    @NotBlank(message = "Email е задължителен")
-    @Email(message = "Невалиден email формат")
+    @NotBlank(message = "Email е задължителен.")
+    @Email(message = "Невалиден email формат.")
     private String email;
 
-    @NotBlank(message = "Паролата е задължителна")
+    @NotBlank(message = "Паролата е задължителна.")
     private String password;
 }

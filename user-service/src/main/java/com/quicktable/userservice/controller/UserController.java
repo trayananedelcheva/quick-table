@@ -3,7 +3,12 @@ package com.quicktable.userservice.controller;
 import com.quicktable.common.dto.UserRole;
 import com.quicktable.userservice.dto.UserResponse;
 import com.quicktable.userservice.service.UserService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -17,21 +22,31 @@ public class UserController {
 
     private final UserService userService;
 
+    @Operation(summary = "[Client] Get current user profile", tags = {"Client"})
+    @SecurityRequirement(name = "Client")
     @GetMapping("/me")
     public ResponseEntity<UserResponse> getCurrentUser() {
         UserResponse response = userService.getCurrentUser();
         return ResponseEntity.ok(response);
     }
 
+    @Operation(summary = "[Client] Get user by ID", tags = {"Client"})
+    @SecurityRequirement(name = "Client")
     @GetMapping("/{userId}")
     public ResponseEntity<UserResponse> getUserById(@PathVariable Long userId) {
-        UserResponse response = userService.getUserById(userId);
-        return ResponseEntity.ok(response);
+        UserResponse currentUser = userService.getCurrentUser();
+        if (!currentUser.getId().equals(userId) && currentUser.getRole() != UserRole.SYSTEM_ADMIN) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        return ResponseEntity.ok(userService.getUserById(userId));
     }
 
+    @Operation(summary = "[System Admin] Get all users", tags = {"System Admin"})
+    @SecurityRequirement(name = "System Admin")
     @GetMapping
     @PreAuthorize("hasRole('SYSTEM_ADMIN')")
     public ResponseEntity<List<UserResponse>> getAllUsers(
+            @Parameter(schema = @Schema(allowableValues = {"CLIENT", "RESTAURANT_ADMIN", "SYSTEM_ADMIN"}))
             @RequestParam(required = false) String role
     ) {
         List<UserResponse> response;
@@ -43,6 +58,8 @@ public class UserController {
         return ResponseEntity.ok(response);
     }
 
+    @Operation(summary = "[System Admin] Update user role", tags = {"System Admin"})
+    @SecurityRequirement(name = "System Admin")
     @PutMapping("/{userId}/role")
     @PreAuthorize("hasRole('SYSTEM_ADMIN')")
     public ResponseEntity<UserResponse> updateUserRole(
