@@ -29,8 +29,9 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
-import java.util.Random;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -41,9 +42,7 @@ public class ReservationService {
     private final RestaurantServiceClient restaurantServiceClient;
     private final UserServiceClient userServiceClient;
     private final NotificationService notificationService;
-    private final Random random = new Random();
-
-    @Value("${app.base-url}")
+@Value("${app.base-url}")
     private String baseUrl;
 
     private static final String RESERVATION_NOT_FOUND = "Резервация с ID ";
@@ -185,34 +184,56 @@ public class ReservationService {
 
     private Long findAvailableTable(Long restaurantId, LocalDate date, LocalTime time,
                                     Integer guestsCount, TableLocation preferredLocation) {
-        // 1. Всички маси с достатъчен капацитет и желана локация
+        // 1. Маси с достатъчен капацитет в желаната зона
         List<TableDTO> candidates = restaurantServiceClient.findTablesByCapacityAndLocation(
                 restaurantId, guestsCount, preferredLocation);
 
         if (candidates.isEmpty()) {
             throw new TableNotAvailableException(
                     "Няма маса с капацитет за " + guestsCount + " гости" +
-                    (preferredLocation != null ? " в локация " + preferredLocation.getDisplayName() : "") + ".");
+                    (preferredLocation != null ? " в зона \"" + preferredLocation.getDisplayName() + "\"" : "") + ".");
         }
 
-        // 2. Всички потвърдени резервации за този ресторант и дата
+        // 2. Активни резервации за деня
         List<Reservation> existing = reservationRepository
                 .findActiveReservationsForRestaurant(restaurantId, date);
 
-        // 3. Филтрираме само незаетите маси
+        // 3. Само незаетите маси
         List<TableDTO> freeTables = candidates.stream()
                 .filter(t -> !isTableOccupied(t.getId(), time, existing))
                 .toList();
 
         if (freeTables.isEmpty()) {
+            if (preferredLocation != null) {
+                // Намираме свободни маси в другите зони
+                String availableZones = restaurantServiceClient
+                        .findTablesByCapacityAndLocation(restaurantId, guestsCount, null)
+                        .stream()
+                        .filter(t -> t.getLocation() != preferredLocation)
+                        .filter(t -> !isTableOccupied(t.getId(), time, existing))
+                        .map(t -> t.getLocation().getDisplayName())
+                        .distinct()
+                        .collect(Collectors.joining(", "));
+
+                String suggestion = availableZones.isEmpty()
+                        ? ""
+                        : " Свободни маси има в: " + availableZones + ".";
+
+                throw new TableNotAvailableException(
+                        "Няма свободни маси в зона \"" + preferredLocation.getDisplayName() +
+                        "\" за " + time + " на " + date + "." + suggestion);
+            }
             throw new TableNotAvailableException(
                     "Всички подходящи маси са заети за " + time + " на " + date + ".");
         }
 
-        // 4. Случаен избор от свободните
-        TableDTO selected = freeTables.get(random.nextInt(freeTables.size()));
-        log.info("Избрана маса {} (капацитет: {}) от {} свободни",
-                selected.getTableNumber(), selected.getCapacity(), freeTables.size());
+        // 4. Best-fit: избираме масата с най-малък разход (capacity - guestsCount)
+        TableDTO selected = freeTables.stream()
+                .min(Comparator.comparingInt(t -> t.getCapacity() - guestsCount))
+                .orElseThrow();
+
+        log.info("Избрана маса {} (капацитет: {}, зона: {}) от {} свободни",
+                selected.getTableNumber(), selected.getCapacity(), selected.getLocation(), freeTables.size());
         return selected.getId();
     }
 

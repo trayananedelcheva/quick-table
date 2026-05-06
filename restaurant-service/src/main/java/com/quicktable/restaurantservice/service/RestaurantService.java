@@ -400,8 +400,9 @@ public class RestaurantService {
             }
             
             // Групиране на маси по локация
-            java.util.Map<com.quicktable.common.dto.TableLocation, List<TableResponse>> tablesByLocation = 
+            java.util.Map<com.quicktable.common.dto.TableLocation, List<TableResponse>> tablesByLocation =
                 restaurant.getTables().stream()
+                    .filter(t -> t.getLocation() != null)
                     .collect(Collectors.groupingBy(
                         RestaurantTable::getLocation,
                         Collectors.mapping(this::mapToTableResponse, Collectors.toList())

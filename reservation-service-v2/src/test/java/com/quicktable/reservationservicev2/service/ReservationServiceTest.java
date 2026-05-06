@@ -166,6 +166,8 @@ class ReservationServiceTest {
         setupValidTimeChecks();
         when(restaurantServiceClient.findTablesByCapacityAndLocation(1L, 4, TableLocation.INSIDE))
                 .thenReturn(List.of(testTable));
+        when(restaurantServiceClient.findTablesByCapacityAndLocation(1L, 4, null))
+                .thenReturn(List.of(testTable));
 
         Reservation existingReservation = Reservation.builder()
                 .tableId(10L)
@@ -177,7 +179,7 @@ class ReservationServiceTest {
         assertThatThrownBy(() ->
                 reservationService.createReservation(1L, UserRole.CLIENT, "token", validRequest))
                 .isInstanceOf(TableNotAvailableException.class)
-                .hasMessageContaining("заети");
+                .hasMessageContaining("Няма свободни маси в зона");
     }
 
     @Test
@@ -288,11 +290,233 @@ class ReservationServiceTest {
         assertThat(response.getStatus()).isEqualTo(ReservationStatus.CONFIRMED);
     }
 
+    // ── Best-fit избор на маса ────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("Best-fit: избира масата с най-малък разход (не случайна)")
+    void bestFit_selectsSmallestFittingTable() {
+        // Група от 3, маси с капацитет 4, 6, 8 → трябва да се избере 4
+        TableDTO table4 = tableWithId(10L, 4, TableLocation.INSIDE);
+        TableDTO table6 = tableWithId(11L, 6, TableLocation.INSIDE);
+        TableDTO table8 = tableWithId(12L, 8, TableLocation.INSIDE);
+
+        validRequest.setGuestsCount(3);
+        setupValidTimeChecks();
+        when(restaurantServiceClient.findTablesByCapacityAndLocation(1L, 3, TableLocation.INSIDE))
+                .thenReturn(List.of(table4, table6, table8));
+        when(reservationRepository.findActiveReservationsForRestaurant(eq(1L), any()))
+                .thenReturn(List.of());
+
+        ArgumentCaptor<Reservation> captor = ArgumentCaptor.forClass(Reservation.class);
+        saveAndReturn(captor);
+
+        assertThat(captor.getValue().getTableId()).isEqualTo(10L);
+    }
+
+    @Test
+    @DisplayName("Best-fit: при точно съвпадение избира точната маса")
+    void bestFit_exactCapacityMatch() {
+        TableDTO tableExact = tableWithId(10L, 4, TableLocation.INSIDE);
+        TableDTO tableLarger = tableWithId(11L, 6, TableLocation.INSIDE);
+
+        setupValidTimeChecks();
+        when(restaurantServiceClient.findTablesByCapacityAndLocation(1L, 4, TableLocation.INSIDE))
+                .thenReturn(List.of(tableExact, tableLarger));
+        when(reservationRepository.findActiveReservationsForRestaurant(eq(1L), any()))
+                .thenReturn(List.of());
+
+        ArgumentCaptor<Reservation> captor = ArgumentCaptor.forClass(Reservation.class);
+        saveAndReturn(captor);
+
+        assertThat(captor.getValue().getTableId()).isEqualTo(10L);
+    }
+
+    @Test
+    @DisplayName("Best-fit: ако точната маса е заета, взима следващата най-подходяща")
+    void bestFit_exactTableOccupied_takesNextBestFit() {
+        TableDTO table4 = tableWithId(10L, 4, TableLocation.INSIDE);
+        TableDTO table6 = tableWithId(11L, 6, TableLocation.INSIDE);
+
+        setupValidTimeChecks();
+        when(restaurantServiceClient.findTablesByCapacityAndLocation(1L, 4, TableLocation.INSIDE))
+                .thenReturn(List.of(table4, table6));
+
+        // Масата за 4 е заета в 18:30 → блокира 19:00
+        Reservation occupied = Reservation.builder()
+                .tableId(10L)
+                .reservationTime(LocalTime.of(18, 30))
+                .status(ReservationStatus.CONFIRMED)
+                .build();
+        when(reservationRepository.findActiveReservationsForRestaurant(eq(1L), any()))
+                .thenReturn(List.of(occupied));
+
+        ArgumentCaptor<Reservation> captor = ArgumentCaptor.forClass(Reservation.class);
+        saveAndReturn(captor);
+
+        assertThat(captor.getValue().getTableId()).isEqualTo(11L);
+    }
+
+    // ── Зона: съобщения за алтернативи ───────────────────────────────────────
+
+    @Test
+    @DisplayName("Заета зона — съобщението предлага свободна алтернативна зона")
+    void zoneFull_suggestsOtherAvailableZone() {
+        setupValidTimeChecks();
+
+        TableDTO insideTable = tableWithId(10L, 4, TableLocation.INSIDE);
+        when(restaurantServiceClient.findTablesByCapacityAndLocation(1L, 4, TableLocation.INSIDE))
+                .thenReturn(List.of(insideTable));
+
+        Reservation occupied = Reservation.builder()
+                .tableId(10L)
+                .reservationTime(LocalTime.of(19, 0))
+                .status(ReservationStatus.CONFIRMED)
+                .build();
+        when(reservationRepository.findActiveReservationsForRestaurant(eq(1L), any()))
+                .thenReturn(List.of(occupied));
+
+        // Лятна градина има свободна маса
+        TableDTO gardenTable = tableWithId(20L, 4, TableLocation.SUMMER_GARDEN);
+        when(restaurantServiceClient.findTablesByCapacityAndLocation(1L, 4, null))
+                .thenReturn(List.of(insideTable, gardenTable));
+
+        assertThatThrownBy(() ->
+                reservationService.createReservation(1L, UserRole.CLIENT, "token", validRequest))
+                .isInstanceOf(TableNotAvailableException.class)
+                .hasMessageContaining("Вътре")
+                .hasMessageContaining("Свободни маси има в")
+                .hasMessageContaining("Лятна градина");
+    }
+
+    @Test
+    @DisplayName("Заета зона — без алтернативи, без допълнително предложение")
+    void zoneFull_noOtherZones_noSuggestion() {
+        setupValidTimeChecks();
+
+        TableDTO insideTable = tableWithId(10L, 4, TableLocation.INSIDE);
+        when(restaurantServiceClient.findTablesByCapacityAndLocation(1L, 4, TableLocation.INSIDE))
+                .thenReturn(List.of(insideTable));
+
+        Reservation occupied = Reservation.builder()
+                .tableId(10L)
+                .reservationTime(LocalTime.of(19, 0))
+                .status(ReservationStatus.CONFIRMED)
+                .build();
+        when(reservationRepository.findActiveReservationsForRestaurant(eq(1L), any()))
+                .thenReturn(List.of(occupied));
+
+        // Само INSIDE съществува, и тя е заета
+        when(restaurantServiceClient.findTablesByCapacityAndLocation(1L, 4, null))
+                .thenReturn(List.of(insideTable));
+
+        assertThatThrownBy(() ->
+                reservationService.createReservation(1L, UserRole.CLIENT, "token", validRequest))
+                .isInstanceOf(TableNotAvailableException.class)
+                .hasMessageContaining("Вътре")
+                .hasMessageNotContaining("Свободни маси има в");
+    }
+
+    @Test
+    @DisplayName("Без зона — всички маси заети — generic съобщение")
+    void noZonePreference_allTablesFull_genericMessage() {
+        validRequest.setPreferredLocation(null);
+        setupValidTimeChecks();
+
+        TableDTO table = tableWithId(10L, 4, TableLocation.INSIDE);
+        when(restaurantServiceClient.findTablesByCapacityAndLocation(1L, 4, null))
+                .thenReturn(List.of(table));
+
+        Reservation occupied = Reservation.builder()
+                .tableId(10L)
+                .reservationTime(LocalTime.of(19, 0))
+                .status(ReservationStatus.CONFIRMED)
+                .build();
+        when(reservationRepository.findActiveReservationsForRestaurant(eq(1L), any()))
+                .thenReturn(List.of(occupied));
+
+        assertThatThrownBy(() ->
+                reservationService.createReservation(1L, UserRole.CLIENT, "token", validRequest))
+                .isInstanceOf(TableNotAvailableException.class)
+                .hasMessageContaining("Всички подходящи маси са заети");
+    }
+
+    // ── Overlap на времевия прозорец ──────────────────────────────────────────
+
+    @Test
+    @DisplayName("Overlap: съществуваща 18:00 (свършва 20:00) блокира нова в 19:00")
+    void overlap_eighteenToTwenty_blocksNineteenOClock() {
+        setupValidTimeChecks();
+
+        TableDTO table = tableWithId(10L, 4, TableLocation.INSIDE);
+        when(restaurantServiceClient.findTablesByCapacityAndLocation(1L, 4, TableLocation.INSIDE))
+                .thenReturn(List.of(table));
+
+        Reservation occupied = Reservation.builder()
+                .tableId(10L)
+                .reservationTime(LocalTime.of(18, 0))
+                .status(ReservationStatus.CONFIRMED)
+                .build();
+        when(reservationRepository.findActiveReservationsForRestaurant(eq(1L), any()))
+                .thenReturn(List.of(occupied));
+
+        assertThatThrownBy(() ->
+                reservationService.createReservation(1L, UserRole.CLIENT, "token", validRequest))
+                .isInstanceOf(TableNotAvailableException.class);
+    }
+
+    @Test
+    @DisplayName("Overlap: съществуваща 20:00 (свършва 22:00) блокира нова в 19:00")
+    void overlap_twentyToTwentyTwo_blocksNineteenOClock() {
+        setupValidTimeChecks();
+
+        TableDTO table = tableWithId(10L, 4, TableLocation.INSIDE);
+        when(restaurantServiceClient.findTablesByCapacityAndLocation(1L, 4, TableLocation.INSIDE))
+                .thenReturn(List.of(table));
+
+        Reservation occupied = Reservation.builder()
+                .tableId(10L)
+                .reservationTime(LocalTime.of(20, 0))
+                .status(ReservationStatus.CONFIRMED)
+                .build();
+        when(reservationRepository.findActiveReservationsForRestaurant(eq(1L), any()))
+                .thenReturn(List.of(occupied));
+
+        assertThatThrownBy(() ->
+                reservationService.createReservation(1L, UserRole.CLIENT, "token", validRequest))
+                .isInstanceOf(TableNotAvailableException.class);
+    }
+
+    @Test
+    @DisplayName("Overlap edge case: съществуваща 17:00 (свършва точно в 19:00) НЕ блокира нова в 19:00")
+    void overlap_edgeCase_seventeenToNineteen_doesNotBlockNineteen() {
+        setupValidTimeChecks();
+
+        TableDTO table = tableWithId(10L, 4, TableLocation.INSIDE);
+        when(restaurantServiceClient.findTablesByCapacityAndLocation(1L, 4, TableLocation.INSIDE))
+                .thenReturn(List.of(table));
+
+        Reservation finished = Reservation.builder()
+                .tableId(10L)
+                .reservationTime(LocalTime.of(17, 0))
+                .status(ReservationStatus.CONFIRMED)
+                .build();
+        when(reservationRepository.findActiveReservationsForRestaurant(eq(1L), any()))
+                .thenReturn(List.of(finished));
+
+        ArgumentCaptor<Reservation> captor = ArgumentCaptor.forClass(Reservation.class);
+        ReservationResponse response = saveAndReturn(captor);
+
+        assertThat(response).isNotNull();
+        assertThat(captor.getValue().getTableId()).isEqualTo(10L);
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private void setupValidTimeChecks() {
         when(restaurantServiceClient.getRestaurantById(1L)).thenReturn(testRestaurant);
         when(userServiceClient.getUserById(1L, "token")).thenReturn(testUser);
+        when(reservationRepository.findConfirmedReservationsByUserAndDate(eq(1L), any()))
+                .thenReturn(List.of());
     }
 
     private void setupValidTableSearch() {
@@ -300,5 +524,21 @@ class ReservationServiceTest {
                 .thenReturn(List.of(testTable));
         when(reservationRepository.findActiveReservationsForRestaurant(1L, validRequest.getReservationDate()))
                 .thenReturn(List.of());
+    }
+
+    private ReservationResponse saveAndReturn(ArgumentCaptor<Reservation> captor) {
+        when(reservationRepository.save(captor.capture()))
+                .thenAnswer(inv -> { Reservation r = inv.getArgument(0); r.setId(1L); return r; });
+        return reservationService.createReservation(1L, UserRole.CLIENT, "token", validRequest);
+    }
+
+    private TableDTO tableWithId(Long id, int capacity, TableLocation location) {
+        TableDTO t = new TableDTO();
+        t.setId(id);
+        t.setTableNumber("T" + id);
+        t.setCapacity(capacity);
+        t.setLocation(location);
+        t.setAvailable(true);
+        return t;
     }
 }
