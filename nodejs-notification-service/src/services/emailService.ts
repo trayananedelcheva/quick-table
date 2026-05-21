@@ -7,15 +7,16 @@ export interface NotificationRequest {
     type: string;
     recipientEmail: string;
     recipientName: string;
-    reservationId: number;
-    restaurantName: string;
-    reservationDate: string;
-    reservationTime: string;
-    numberOfGuests: number;
+    reservationId?: number;
+    restaurantName?: string;
+    reservationDate?: string;
+    reservationTime?: string;
+    numberOfGuests?: number;
     specialRequests?: string;
     userId?: number;
     rejectionReason?: string;
     reviewUrl?: string;
+    resetUrl?: string;
 }
 
 const transporter = nodemailer.createTransport({
@@ -47,14 +48,16 @@ const TYPE_TO_TEMPLATE: Record<string, string> = {
     RESERVATION_REJECTED: 'reservation-rejected',
     RESERVATION_COMPLETED: 'reservation-completed',
     RESERVATION_NO_SHOW: 'reservation-no-show',
+    PASSWORD_RESET: 'password-reset',
 };
 
-const TYPE_TO_SUBJECT: Record<string, (restaurantName: string) => string> = {
-    RESERVATION_CONFIRMED: (r) => `Потвърдена резервация - ${r}`,
-    RESERVATION_CANCELLED: (r) => `Отказана резервация - ${r}`,
-    RESERVATION_REJECTED: (r) => `Резервацията ви беше отхвърлена - ${r}`,
-    RESERVATION_NO_SHOW:  (r) => `Пропусната резервация - ${r}`,
-    RESERVATION_COMPLETED: (r) => `Благодарим ви! Оставете ревю за ${r}`,
+const TYPE_TO_SUBJECT: Record<string, (data: NotificationRequest) => string> = {
+    RESERVATION_CONFIRMED: (d) => `Потвърдена резервация - ${d.restaurantName}`,
+    RESERVATION_CANCELLED: (d) => `Отказана резервация - ${d.restaurantName}`,
+    RESERVATION_REJECTED: (d) => `Резервацията ви беше отхвърлена - ${d.restaurantName}`,
+    RESERVATION_NO_SHOW:  (d) => `Пропусната резервация - ${d.restaurantName}`,
+    RESERVATION_COMPLETED: (d) => `Благодарим ви! Оставете ревю за ${d.restaurantName}`,
+    PASSWORD_RESET: () => 'Смяна на парола - Quick Table',
 };
 
 export async function sendEmail(data: NotificationRequest): Promise<void> {
@@ -67,7 +70,7 @@ export async function sendEmail(data: NotificationRequest): Promise<void> {
     const html = template(data);
 
     const subjectFn = TYPE_TO_SUBJECT[data.type];
-    const subject = subjectFn ? subjectFn(data.restaurantName) : `Нотификация от Quick Table - ${data.restaurantName}`;
+    const subject = subjectFn ? subjectFn(data) : `Нотификация от Quick Table`;
 
     await transporter.sendMail({
         from: `"Quick Table" <${process.env.SMTP_USER}>`,

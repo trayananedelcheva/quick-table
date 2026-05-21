@@ -26,6 +26,12 @@ jwt:
   secret: ${JWT_SECRET}
   expiration: 86400000
 
+notification-service:
+  url: http://localhost:3001
+
+app:
+  base-url: http://localhost:3000
+
 logging:
   level:
     "[com.quicktable]": DEBUG

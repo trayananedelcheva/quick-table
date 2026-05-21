@@ -5,7 +5,9 @@ import com.quicktable.userservice.dto.AuthResponse;
 import com.quicktable.userservice.dto.LoginRequest;
 import com.quicktable.userservice.dto.RegisterRequest;
 import com.quicktable.userservice.exception.EmailAlreadyExistsException;
+import com.quicktable.userservice.entity.PasswordResetToken;
 import com.quicktable.userservice.entity.User;
+import com.quicktable.userservice.repository.PasswordResetTokenRepository;
 import com.quicktable.userservice.repository.UserRepository;
 import com.quicktable.userservice.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
@@ -17,18 +19,26 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.HexFormat;
 import java.util.Map;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class AuthService {
 
     private final UserRepository userRepository;
+    private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final AuthenticationManager authenticationManager;
     private final UserDetailsService userDetailsService;
+    private final NotificationClient notificationClient;
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
@@ -99,5 +109,42 @@ public class AuthService {
                 .lastName(user.getLastName())
                 .role(user.getRole())
                 .build();
+    }
+
+    @Transactional
+    public void forgotPassword(String email) {
+        userRepository.findByEmail(email).ifPresent(user -> {
+            passwordResetTokenRepository.deleteAllByUser(user);
+            String rawToken = UUID.randomUUID().toString();
+            String hashedToken = hashToken(rawToken);
+            PasswordResetToken prt = new PasswordResetToken(hashedToken, user, LocalDateTime.now().plusHours(1));
+            passwordResetTokenRepository.save(prt);
+            notificationClient.sendPasswordReset(user, rawToken);
+        });
+    }
+
+    @Transactional
+    public void resetPassword(String rawToken, String newPassword) {
+        String hashedToken = hashToken(rawToken);
+        PasswordResetToken prt = passwordResetTokenRepository.findByToken(hashedToken)
+                .orElseThrow(() -> new RuntimeException("Невалиден или изтекъл токен за смяна на парола."));
+        if (prt.isUsed() || prt.getExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("Невалиден или изтекъл токен за смяна на парола.");
+        }
+        User user = prt.getUser();
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+        prt.setUsed(true);
+        passwordResetTokenRepository.save(prt);
+    }
+
+    private String hashToken(String token) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(token.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(hash);
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException("SHA-256 не е наличен", e);
+        }
     }
 }

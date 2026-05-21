@@ -17,6 +17,10 @@ router.post('/send', async (req: Request, res: Response) => {
         console.error('Грешка при изпращане на email:', errorMessage);
     }
 
+    if (data.type === 'PASSWORD_RESET') {
+        return res.json({ success });
+    }
+
     const result = await pool.query(
         `INSERT INTO notifications
             (type, recipient_email, recipient_name, reservation_id, restaurant_name,
