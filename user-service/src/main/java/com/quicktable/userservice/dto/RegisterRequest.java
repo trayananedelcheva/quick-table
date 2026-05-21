@@ -3,7 +3,7 @@ package com.quicktable.userservice.dto;
 import com.quicktable.common.dto.UserRole;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.Pattern;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -20,7 +20,10 @@ public class RegisterRequest {
     private String email;
 
     @NotBlank(message = "Паролата е задължителна.")
-    @Size(min = 6, message = "Паролата трябва да е поне 6 символа.")
+    @Pattern(
+        regexp = "^(?=.*[A-Za-z])(?=.*\\d)(?=.*[^A-Za-z\\d]).{8,}$",
+        message = "Паролата трябва да е поне 8 символа и да съдържа поне една буква, една цифра и един специален символ."
+    )
     private String password;
 
     @NotBlank(message = "Първото име е задължително.")
