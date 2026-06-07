@@ -2,6 +2,7 @@ package com.quicktable.restaurantservice.controller;
 
 import com.quicktable.restaurantservice.dto.ReviewRequest;
 import com.quicktable.restaurantservice.dto.ReviewResponse;
+import com.quicktable.restaurantservice.security.SecurityUtils;
 import com.quicktable.restaurantservice.service.ReviewService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -20,25 +21,23 @@ import java.util.List;
 public class ReviewController {
 
     private final ReviewService reviewService;
+    private final SecurityUtils securityUtils;
 
     @Operation(summary = "[Client] Add review for restaurant", tags = {"Client"})
     @SecurityRequirement(name = "Client")
     @PostMapping
     public ResponseEntity<ReviewResponse> addReview(
-            HttpServletRequest request,
+            HttpServletRequest httpRequest,
             @PathVariable Long restaurantId,
             @Valid @RequestBody ReviewRequest reviewRequest
     ) {
-        Long userId = (Long) request.getAttribute("userId");
-        if (userId == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
-        String firstName = (String) request.getAttribute("firstName");
-        String lastName = (String) request.getAttribute("lastName");
+        Long userId = securityUtils.getCurrentUserId();
+        String firstName = securityUtils.getCurrentUserFirstName();
+        String lastName = securityUtils.getCurrentUserLastName();
         String customerName = (firstName != null && lastName != null)
                 ? firstName + " " + lastName
                 : "Анонимен";
-        String token = request.getHeader("Authorization");
+        String token = httpRequest.getHeader("Authorization");
 
         ReviewResponse response = reviewService.addReview(restaurantId, reviewRequest, userId, customerName, token);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -48,5 +47,16 @@ public class ReviewController {
     @GetMapping
     public ResponseEntity<List<ReviewResponse>> getReviews(@PathVariable Long restaurantId) {
         return ResponseEntity.ok(reviewService.getReviewsByRestaurant(restaurantId));
+    }
+
+    @Operation(summary = "[Client] Get review by reservation ID", tags = {"Client"})
+    @GetMapping("/by-reservation/{reservationId}")
+    public ResponseEntity<ReviewResponse> getReviewByReservation(
+            @PathVariable Long restaurantId,
+            @PathVariable Long reservationId
+    ) {
+        return reviewService.getReviewByReservationId(reservationId)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 }

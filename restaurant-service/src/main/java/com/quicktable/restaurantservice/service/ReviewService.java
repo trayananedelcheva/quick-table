@@ -82,6 +82,10 @@ public class ReviewService {
                 .collect(Collectors.toList());
     }
 
+    public java.util.Optional<ReviewResponse> getReviewByReservationId(Long reservationId) {
+        return reviewRepository.findByReservationId(reservationId).map(this::mapToResponse);
+    }
+
     private ReviewResponse mapToResponse(Review review) {
         return ReviewResponse.builder()
                 .id(review.getId())

@@ -18,6 +18,10 @@ spring:
 server:
   port: 8082
 
+app:
+  upload-dir: uploads
+  base-url: http://localhost:8082
+
 jwt:
   secret: ${JWT_SECRET}
   expiration: 86400000

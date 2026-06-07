@@ -12,7 +12,6 @@ import com.quicktable.reservationservicev2.security.SecurityUtils;
 import com.quicktable.reservationservicev2.service.ReservationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -24,6 +23,7 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -44,11 +44,10 @@ public class ReservationController {
     @PostMapping
     public ResponseEntity<ReservationResponse> createReservation(
             @Valid @RequestBody ReservationRequest request,
-            HttpServletRequest httpRequest
+            @RequestHeader("Authorization") String token
     ) {
         Long userId = securityUtils.getCurrentUserId();
         UserRole userRole = UserRole.valueOf(securityUtils.getCurrentUserRole());
-        String token = httpRequest.getHeader("Authorization");
 
         ReservationResponse response = reservationService.createReservation(userId, userRole, token, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -59,14 +58,13 @@ public class ReservationController {
     @PostMapping("/admin")
     public ResponseEntity<ReservationResponse> createReservationAsAdmin(
             @Valid @RequestBody AdminReservationRequest request,
-            HttpServletRequest httpRequest
+            @RequestHeader("Authorization") String token
     ) {
         UserRole userRole = UserRole.valueOf(securityUtils.getCurrentUserRole());
         if (userRole != UserRole.SYSTEM_ADMIN) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
         Long adminId = securityUtils.getCurrentUserId();
-        String token = httpRequest.getHeader("Authorization");
         ReservationResponse response = reservationService.createReservationAsAdmin(adminId, token, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -82,9 +80,15 @@ public class ReservationController {
     @Operation(summary = "[Client] Get my reservations", tags = {"Client"})
     @SecurityRequirement(name = "Client")
     @GetMapping("/my")
-    public ResponseEntity<List<ReservationResponse>> getMyReservations() {
+    public ResponseEntity<List<ReservationResponse>> getMyReservations(
+            @RequestParam(required = false, defaultValue = "false") boolean upcoming,
+            @RequestParam(required = false) ReservationStatus status,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate
+    ) {
         Long userId = securityUtils.getCurrentUserId();
-        List<ReservationResponse> reservations = reservationService.getMyReservations(userId);
+        List<ReservationResponse> reservations = upcoming
+                ? reservationService.getMyUpcomingReservations(userId)
+                : reservationService.getMyReservations(userId, status, fromDate);
         return ResponseEntity.ok(reservations);
     }
 

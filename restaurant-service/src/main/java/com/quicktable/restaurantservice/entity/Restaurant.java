@@ -45,6 +45,8 @@ public class Restaurant {
 
     private String email;
 
+    private String imageUrl;
+
     // Работно време
     private LocalTime openingTime;
 

@@ -17,4 +17,5 @@ public class RestaurantDTO {
     private Long ownerId;
     private LocalTime openingTime;
     private LocalTime closingTime;
+    private String imageUrl;
 }

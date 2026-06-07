@@ -24,6 +24,7 @@ public class RestaurantResponse {
     private Double longitude;
     private String phone;
     private String email;
+    private String imageUrl;
     private LocalTime openingTime;
     private LocalTime closingTime;
     private Long ownerId;

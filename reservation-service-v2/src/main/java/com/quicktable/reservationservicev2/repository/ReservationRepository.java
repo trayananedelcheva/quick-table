@@ -22,7 +22,15 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
             @Param("date") LocalDate date
     );
 
-    List<Reservation> findByUserIdOrderByReservationDateDesc(Long userId);
+    List<Reservation> findByUserIdOrderByCreatedAtDesc(Long userId);
+
+    List<Reservation> findByUserIdAndStatusOrderByCreatedAtDesc(Long userId, ReservationStatus status);
+
+    List<Reservation> findByUserIdAndReservationDateGreaterThanEqualOrderByReservationDateAscReservationTimeAsc(
+            Long userId, LocalDate fromDate);
+
+    List<Reservation> findByUserIdAndStatusAndReservationDateGreaterThanEqualOrderByReservationDateAscReservationTimeAsc(
+            Long userId, ReservationStatus status, LocalDate fromDate);
 
     @Query("SELECT r FROM Reservation r WHERE r.userId = :userId " +
            "AND r.reservationDate = :date " +

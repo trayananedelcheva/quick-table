@@ -265,10 +265,20 @@ public class ReservationService {
         LocalTime slot = restaurant.getOpeningTime();
         LocalTime lastSlot = restaurant.getClosingTime().minusHours(1);
 
+        // За днешна дата — минималният час е сега + 1 час
+        LocalTime minTime = date.equals(LocalDate.now())
+                ? LocalTime.now().plusHours(1)
+                : LocalTime.MIN;
+
         while (!slot.isAfter(lastSlot)) {
             final LocalTime current = slot;
-            boolean available = candidates.stream().anyMatch(t -> !isTableOccupied(t.getId(), current, existing));
-            slots.add(new TimeSlotResponse(current, available));
+            // Пропускаме минали часове за днешния ден
+            if (!current.isBefore(minTime)) {
+                boolean available = candidates.stream().anyMatch(t -> !isTableOccupied(t.getId(), current, existing));
+                if (available) {
+                    slots.add(new TimeSlotResponse(current, true));
+                }
+            }
             slot = slot.plusMinutes(30);
         }
 
@@ -533,6 +543,15 @@ public class ReservationService {
         }
     }
 
+    private String getRestaurantImageUrl(Long restaurantId) {
+        try {
+            var restaurant = restaurantServiceClient.getRestaurantById(restaurantId);
+            return restaurant != null ? restaurant.getImageUrl() : null;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     // ── Извличане на резервация по ID ──────────────────────────────────────────
 
     public ReservationResponse getReservationById(Long reservationId) {
@@ -543,8 +562,29 @@ public class ReservationService {
 
     // ── Извличане на резервации на потребител ─────────────────────────────────
 
-    public List<ReservationResponse> getMyReservations(Long userId) {
-        return reservationRepository.findByUserIdOrderByReservationDateDesc(userId).stream()
+    public List<ReservationResponse> getMyReservations(Long userId, ReservationStatus status, LocalDate fromDate) {
+        List<Reservation> reservations;
+        if (status != null && fromDate != null) {
+            reservations = reservationRepository
+                    .findByUserIdAndStatusAndReservationDateGreaterThanEqualOrderByReservationDateAscReservationTimeAsc(
+                            userId, status, fromDate);
+        } else if (status != null) {
+            reservations = reservationRepository.findByUserIdAndStatusOrderByCreatedAtDesc(userId, status);
+        } else if (fromDate != null) {
+            reservations = reservationRepository
+                    .findByUserIdAndReservationDateGreaterThanEqualOrderByReservationDateAscReservationTimeAsc(
+                            userId, fromDate);
+        } else {
+            reservations = reservationRepository.findByUserIdOrderByCreatedAtDesc(userId);
+        }
+        return reservations.stream().map(this::mapToResponse).toList();
+    }
+
+    public List<ReservationResponse> getMyUpcomingReservations(Long userId) {
+        return reservationRepository
+                .findByUserIdAndStatusAndReservationDateGreaterThanEqualOrderByReservationDateAscReservationTimeAsc(
+                        userId, ReservationStatus.CONFIRMED, LocalDate.now())
+                .stream()
                 .map(this::mapToResponse)
                 .toList();
     }
@@ -562,6 +602,8 @@ public class ReservationService {
                 .id(r.getId())
                 .userId(r.getUserId())
                 .restaurantId(r.getRestaurantId())
+                .restaurantName(getRestaurantName(r.getRestaurantId()))
+                .restaurantImageUrl(getRestaurantImageUrl(r.getRestaurantId()))
                 .tableId(r.getTableId())
                 .reservationDate(r.getReservationDate())
                 .reservationTime(r.getReservationTime())

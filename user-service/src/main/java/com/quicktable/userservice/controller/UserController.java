@@ -14,6 +14,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/users")
@@ -35,7 +36,7 @@ public class UserController {
     @GetMapping("/{userId}")
     public ResponseEntity<UserResponse> getUserById(@PathVariable Long userId) {
         UserResponse currentUser = userService.getCurrentUser();
-        if (!currentUser.getId().equals(userId) && currentUser.getRole() != UserRole.SYSTEM_ADMIN) {
+        if (!(currentUser.getId().equals(userId) || currentUser.getRole() == UserRole.SYSTEM_ADMIN)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
         return ResponseEntity.ok(userService.getUserById(userId));
@@ -56,6 +57,28 @@ public class UserController {
             response = userService.getAllUsers();
         }
         return ResponseEntity.ok(response);
+    }
+
+    @Operation(summary = "[Client] Update profile", tags = {"Client"})
+    @SecurityRequirement(name = "Client")
+    @PutMapping("/me/profile")
+    public ResponseEntity<UserResponse> updateProfile(
+            @RequestParam(required = false) String firstName,
+            @RequestParam(required = false) String lastName,
+            @RequestParam(required = false) String phoneNumber
+    ) {
+        return ResponseEntity.ok(userService.updateProfile(firstName, lastName, phoneNumber));
+    }
+
+    @Operation(summary = "[Client] Change password", tags = {"Client"})
+    @SecurityRequirement(name = "Client")
+    @PutMapping("/me/password")
+    public ResponseEntity<Map<String, String>> changePassword(
+            @RequestParam String currentPassword,
+            @RequestParam String newPassword
+    ) {
+        userService.changePassword(currentPassword, newPassword);
+        return ResponseEntity.ok(Map.of("message", "Паролата е сменена успешно."));
     }
 
     @Operation(summary = "[System Admin] Update user role", tags = {"System Admin"})

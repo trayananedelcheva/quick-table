@@ -11,14 +11,25 @@ import com.quicktable.restaurantservice.repository.RestaurantTableRepository;
 import com.quicktable.restaurantservice.repository.ReviewRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
+import java.time.LocalDate;
+import java.time.LocalTime;
 
 @Service
 @Slf4j
@@ -30,6 +41,12 @@ public class RestaurantService {
     private final LocationAvailabilityRepository locationAvailabilityRepository;
     private final ReviewRepository reviewRepository;
     private final GeocodingService geocodingService;
+
+    @Value("${app.upload-dir:uploads}")
+    private String uploadDir;
+
+    @Value("${app.base-url:http://localhost:8082}")
+    private String baseUrl;
 
     @Transactional
     public RestaurantResponse createRestaurant(RestaurantRequest request, Long userId, String userRole) {
@@ -55,7 +72,7 @@ public class RestaurantService {
 
     private RestaurantResponse buildAndSaveRestaurant(String name, String description, String address,
                                                        String city, String country, String phone, String email,
-                                                       java.time.LocalTime openingTime, java.time.LocalTime closingTime,
+                                                       LocalTime openingTime, LocalTime closingTime,
                                                        Map<String, List<TableRequest>> locations,
                                                        List<TableRequest> tables, Long ownerId) {
         GeoLocation geoLocation = geocodingService.geocodeAddress(address);
@@ -264,7 +281,7 @@ public class RestaurantService {
     public List<TableResponse> getRestaurantTables(Long restaurantId) {
         // Намираме disabled локациите за този ресторант
         List<LocationAvailability> availabilities = locationAvailabilityRepository.findByRestaurantId(restaurantId);
-        java.util.Set<TableLocation> disabledLocations = availabilities.stream()
+        Set<TableLocation> disabledLocations = availabilities.stream()
                 .filter(a -> !Boolean.TRUE.equals(a.getEnabled()))
                 .map(LocationAvailability::getLocation)
                 .collect(Collectors.toSet());
@@ -275,7 +292,7 @@ public class RestaurantService {
                 .collect(Collectors.toList());
     }
 
-    public List<String> getAvailableTimeSlots(Long restaurantId, java.time.LocalDate date, Integer guestsCount) {
+    public List<String> getAvailableTimeSlots(Long restaurantId, LocalDate date, Integer guestsCount) {
         Restaurant restaurant = restaurantRepository.findById(restaurantId)
                 .orElseThrow(() -> new RuntimeException("Ресторант не е намерен"));
 
@@ -291,8 +308,8 @@ public class RestaurantService {
 
         // Генерираме слотове на всеки 30 минути от opening до closing - 1 час
         List<String> allPossibleSlots = new ArrayList<>();
-        java.time.LocalTime currentTime = restaurant.getOpeningTime();
-        java.time.LocalTime lastSlot = restaurant.getClosingTime().minusHours(1);
+        LocalTime currentTime = restaurant.getOpeningTime();
+        LocalTime lastSlot = restaurant.getClosingTime().minusHours(1);
 
         while (currentTime.isBefore(lastSlot) || currentTime.equals(lastSlot)) {
             allPossibleSlots.add(currentTime.toString());
@@ -309,8 +326,8 @@ public class RestaurantService {
 
     @Transactional
     public RestaurantResponse updateRestaurantHours(Long restaurantId, Long userId, String userRole,
-                                                    java.time.LocalTime openingTime, 
-                                                    java.time.LocalTime closingTime) {
+                                                    LocalTime openingTime,
+                                                    LocalTime closingTime) {
         Restaurant restaurant = restaurantRepository.findById(restaurantId)
                 .orElseThrow(() -> new RuntimeException("Ресторант не е намерен"));
 
@@ -327,7 +344,7 @@ public class RestaurantService {
         // RESTAURANT_ADMIN - може да променя САМО своя ресторант (където adminUserId == userId)
         if (!isSystemAdmin && !(isRestaurantAdmin && isOwner)) {
             throw new RuntimeException("Нямате права да променяте работното време на този ресторант. " +
-                    "RESTAURANT_ADMIN може да променя само ресторанти, където е собственик.");
+                    "RESTAURANT_ADMIN може да променя само ресторанти, на които е собственик.");
         }
 
         restaurant.setOpeningTime(openingTime);
@@ -366,6 +383,41 @@ public class RestaurantService {
         return mapToTableResponse(table);
     }
 
+    @Transactional
+    public RestaurantResponse uploadImage(Long restaurantId, MultipartFile file, Long userId, String userRole) {
+        Restaurant restaurant = restaurantRepository.findById(restaurantId)
+                .orElseThrow(() -> new RuntimeException("Ресторант не е намерен"));
+
+        if (!"SYSTEM_ADMIN".equals(userRole) && !restaurant.getOwnerId().equals(userId)) {
+            throw new RuntimeException("Нямате права да качвате снимка за този ресторант.");
+        }
+
+        String contentType = file.getContentType();
+        if (contentType == null || !contentType.startsWith("image/")) {
+            throw new RuntimeException("Позволени са само изображения.");
+        }
+
+        try {
+            Path uploadPath = Paths.get(uploadDir);
+            Files.createDirectories(uploadPath);
+
+            String ext = file.getOriginalFilename() != null && file.getOriginalFilename().contains(".")
+                    ? file.getOriginalFilename().substring(file.getOriginalFilename().lastIndexOf("."))
+                    : ".jpg";
+            String filename = "restaurant_" + restaurantId + "_" + UUID.randomUUID() + ext;
+            Path filePath = uploadPath.resolve(filename);
+            Files.write(filePath, file.getBytes());
+
+            restaurant.setImageUrl(baseUrl + "/api/restaurants/images/" + filename);
+            restaurant = restaurantRepository.save(restaurant);
+            log.info("Снимка качена за ресторант {}: {}", restaurantId, filename);
+        } catch (IOException e) {
+            throw new RuntimeException("Грешка при записване на файла: " + e.getMessage());
+        }
+
+        return mapToResponse(restaurant, false);
+    }
+
     private RestaurantResponse mapToResponse(Restaurant restaurant, boolean includeTables) {
         RestaurantResponse.RestaurantResponseBuilder builder = RestaurantResponse.builder()
                 .id(restaurant.getId())
@@ -378,6 +430,7 @@ public class RestaurantService {
                 .longitude(restaurant.getLongitude())
                 .phone(restaurant.getPhone())
                 .email(restaurant.getEmail())
+                .imageUrl(restaurant.getImageUrl())
                 .openingTime(restaurant.getOpeningTime())
                 .closingTime(restaurant.getClosingTime())
                 .ownerId(restaurant.getOwnerId())
@@ -390,26 +443,26 @@ public class RestaurantService {
 
         if (includeTables) {
             // Групиране на маси по локация
-            java.util.Map<String, com.quicktable.restaurantservice.dto.LocationGroupResponse> locationsMap = new java.util.HashMap<>();
-            
+            Map<String, LocationGroupResponse> locationsMap = new HashMap<>();
+
             // Извличаме enabled статусите за всички локации
-            java.util.Map<com.quicktable.common.dto.TableLocation, Boolean> locationStatuses = new java.util.HashMap<>();
+            Map<TableLocation, Boolean> locationStatuses = new HashMap<>();
             List<LocationAvailability> availabilities = locationAvailabilityRepository.findByRestaurantId(restaurant.getId());
             for (LocationAvailability avail : availabilities) {
                 locationStatuses.put(avail.getLocation(), avail.getEnabled());
             }
-            
+
             // Групиране на маси по локация
-            java.util.Map<com.quicktable.common.dto.TableLocation, List<TableResponse>> tablesByLocation =
+            Map<TableLocation, List<TableResponse>> tablesByLocation =
                 restaurant.getTables().stream()
                     .filter(t -> t.getLocation() != null)
                     .collect(Collectors.groupingBy(
                         RestaurantTable::getLocation,
                         Collectors.mapping(this::mapToTableResponse, Collectors.toList())
                     ));
-            
+
             // Създаване на LocationGroupResponse за всяка локация (дори ако няма маси)
-            for (com.quicktable.common.dto.TableLocation location : com.quicktable.common.dto.TableLocation.values()) {
+            for (TableLocation location : TableLocation.values()) {
                 List<TableResponse> tables = tablesByLocation.getOrDefault(location, new ArrayList<>());
                 Boolean enabled = locationStatuses.getOrDefault(location, true);
                 
@@ -428,6 +481,51 @@ public class RestaurantService {
         return builder.build();
     }
 
+    @Transactional
+    public TableResponse updateTable(Long restaurantId, Long tableId, TableRequest request, Long userId, String userRole) {
+        Restaurant restaurant = restaurantRepository.findById(restaurantId)
+                .orElseThrow(() -> new RuntimeException("Ресторант не е намерен"));
+
+        boolean isSystemAdmin = "SYSTEM_ADMIN".equals(userRole);
+        boolean isOwner = restaurant.getOwnerId().equals(userId);
+        if (!isSystemAdmin && !isOwner) {
+            throw new RuntimeException("Нямате права да редактирате маси в този ресторант.");
+        }
+
+        RestaurantTable table = tableRepository.findById(tableId)
+                .orElseThrow(() -> new RuntimeException("Маса не е намерена"));
+
+        if (!table.getRestaurant().getId().equals(restaurantId)) {
+            throw new RuntimeException("Масата не принадлежи на този ресторант.");
+        }
+
+        table.setCapacity(request.getCapacity());
+        table.setLocation(request.getLocation());
+        table = tableRepository.save(table);
+        return mapToTableResponse(table);
+    }
+
+    @Transactional
+    public void deleteTable(Long restaurantId, Long tableId, Long userId, String userRole) {
+        Restaurant restaurant = restaurantRepository.findById(restaurantId)
+                .orElseThrow(() -> new RuntimeException("Ресторант не е намерен"));
+
+        boolean isSystemAdmin = "SYSTEM_ADMIN".equals(userRole);
+        boolean isOwner = restaurant.getOwnerId().equals(userId);
+        if (!isSystemAdmin && !isOwner) {
+            throw new RuntimeException("Нямате права да изтривате маси в този ресторант.");
+        }
+
+        RestaurantTable table = tableRepository.findById(tableId)
+                .orElseThrow(() -> new RuntimeException("Маса не е намерена"));
+
+        if (!table.getRestaurant().getId().equals(restaurantId)) {
+            throw new RuntimeException("Масата не принадлежи на този ресторант.");
+        }
+
+        tableRepository.delete(table);
+    }
+
     private TableResponse mapToTableResponse(RestaurantTable table) {
         return TableResponse.builder()
                 .id(table.getId())
@@ -441,7 +539,7 @@ public class RestaurantService {
     // ==================== УПРАВЛЕНИЕ НА ЛОКАЦИИ ====================
 
     @Transactional
-    public com.quicktable.restaurantservice.dto.LocationAvailabilityResponse toggleLocationAvailability(
+    public LocationAvailabilityResponse toggleLocationAvailability(
             Long restaurantId, TableLocation location, Boolean enabled, Long userId, String userRole) {
         Restaurant restaurant = restaurantRepository.findById(restaurantId)
                 .orElseThrow(() -> new RuntimeException("Ресторант не е намерен"));
@@ -475,14 +573,14 @@ public class RestaurantService {
         return mapToLocationAvailabilityResponse(locationAvailability);
     }
 
-    public List<com.quicktable.restaurantservice.dto.LocationAvailabilityResponse> getLocationAvailability(Long restaurantId) {
+    public List<LocationAvailabilityResponse> getLocationAvailability(Long restaurantId) {
         return locationAvailabilityRepository.findByRestaurantId(restaurantId).stream()
                 .map(this::mapToLocationAvailabilityResponse)
-                .collect(java.util.stream.Collectors.toList());
+                .collect(Collectors.toList());
     }
 
-    private com.quicktable.restaurantservice.dto.LocationAvailabilityResponse mapToLocationAvailabilityResponse(LocationAvailability entity) {
-        return com.quicktable.restaurantservice.dto.LocationAvailabilityResponse.builder()
+    private LocationAvailabilityResponse mapToLocationAvailabilityResponse(LocationAvailability entity) {
+        return LocationAvailabilityResponse.builder()
                 .id(entity.getId())
                 .restaurantId(entity.getRestaurant().getId())
                 .location(entity.getLocation())
@@ -495,5 +593,14 @@ public class RestaurantService {
                 .findByRestaurantIdAndLocation(restaurantId, location)
                 .map(LocationAvailability::getEnabled)
                 .orElse(true); // По подразбиране локациите са активни
+    }
+
+    public String getMapsLink(Long restaurantId) {
+        Restaurant restaurant = restaurantRepository.findById(restaurantId)
+                .orElseThrow(() -> new RuntimeException("Ресторант не е намерен"));
+        if (restaurant.getLatitude() == null || restaurant.getLongitude() == null) {
+            throw new RuntimeException("Координатите на ресторанта не са налични");
+        }
+        return "https://www.google.com/maps?q=" + restaurant.getLatitude() + "," + restaurant.getLongitude();
     }
 }

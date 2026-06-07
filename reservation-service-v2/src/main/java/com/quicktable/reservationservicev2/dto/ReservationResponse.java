@@ -16,6 +16,8 @@ public class ReservationResponse {
     private Long id;
     private Long userId;
     private Long restaurantId;
+    private String restaurantName;
+    private String restaurantImageUrl;
     private Long tableId;
     private LocalDate reservationDate;
     private LocalTime reservationTime;
