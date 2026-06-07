@@ -1,0 +1,228 @@
+classDiagram
+    class Restaurant {
+        <<Entity>>
+        +Long id
+        +String name
+        +String description
+        +String address
+        +String city
+        +String country
+        +Double latitude
+        +Double longitude
+        +String phone
+        +String email
+        +String imageUrl
+        +LocalTime openingTime
+        +LocalTime closingTime
+        +Long ownerId
+        +Boolean active
+        +List~RestaurantTable~ tables
+        +LocalDateTime createdAt
+        +LocalDateTime updatedAt
+        #onCreate() void
+        #onUpdate() void
+    }
+
+    class RestaurantTable {
+        <<Entity>>
+        +Long id
+        +Restaurant restaurant
+        +String tableNumber
+        +Integer capacity
+        +TableLocation location
+        +Boolean available
+        #onCreate() void
+    }
+
+    class LocationAvailability {
+        <<Entity>>
+        +Long id
+        +Restaurant restaurant
+        +TableLocation location
+        +Boolean enabled
+        #onCreate() void
+    }
+
+    class Review {
+        <<Entity>>
+        +Long id
+        +Restaurant restaurant
+        +Long userId
+        +Long reservationId
+        +String customerName
+        +Integer rating
+        +String comment
+        +LocalDateTime createdAt
+        #onCreate() void
+    }
+
+    class RestaurantRepository {
+        <<Repository>>
+        +findByActiveTrue() List~Restaurant~
+        +findByCityAndActiveTrue(String) List~Restaurant~
+        +findByOwnerId(Long) List~Restaurant~
+    }
+
+    class RestaurantTableRepository {
+        <<Repository>>
+        +findByRestaurantId(Long) List~RestaurantTable~
+        +findByRestaurantIdAndAvailableTrue(Long) List~RestaurantTable~
+        +findByRestaurantIdAndCapacityGreaterThanEqual(Long, Integer) List~RestaurantTable~
+        +findByRestaurantIdAndLocationAndAvailableTrue(Long, TableLocation) List~RestaurantTable~
+        +findByRestaurantIdAndLocationAndCapacityGreaterThanEqualAndAvailableTrue(Long, TableLocation, Integer) List~RestaurantTable~
+        +findByRestaurantIdAndTableNumber(Long, String) Optional~RestaurantTable~
+    }
+
+    class LocationAvailabilityRepository {
+        <<Repository>>
+        +findByRestaurantId(Long) List~LocationAvailability~
+        +findByRestaurantIdAndLocation(Long, TableLocation) Optional~LocationAvailability~
+        +findByRestaurantIdAndEnabledTrue(Long) List~LocationAvailability~
+    }
+
+    class ReviewRepository {
+        <<Repository>>
+        +findByRestaurantIdOrderByCreatedAtDesc(Long) List~Review~
+        +findByReservationId(Long) Optional~Review~
+        +findAverageRatingByRestaurantId(Long) Double
+        +countByRestaurantId(Long) long
+    }
+
+    class RestaurantService {
+        <<Service>>
+        +createRestaurant(RestaurantRequest, Long, String) RestaurantResponse
+        +createRestaurantAsAdmin(AdminRestaurantRequest, Long) RestaurantResponse
+        +getRestaurantById(Long) RestaurantResponse
+        +getAllRestaurants() List~RestaurantResponse~
+        +getRestaurantsByCity(String) List~RestaurantResponse~
+        +getMyRestaurants(Long) List~RestaurantResponse~
+        +updateRestaurant(Long, RestaurantRequest, Long, String) RestaurantResponse
+        +updateRestaurantHours(Long, Long, String, LocalTime, LocalTime) RestaurantResponse
+        +deleteRestaurant(Long, Long, String) void
+        +hardDeleteRestaurant(Long, Long, String) void
+        +addTable(Long, TableRequest, Long, String) TableResponse
+        +updateTable(Long, Long, TableRequest, Long, String) TableResponse
+        +deleteTable(Long, Long, Long, String) void
+        +getRestaurantTables(Long) List~TableResponse~
+        +updateTableAvailability(Long, String, Long, String, Boolean) TableResponse
+        +uploadImage(Long, MultipartFile, Long, String) RestaurantResponse
+        +getAvailableTimeSlots(Long, LocalDate, Integer) List~String~
+        +toggleLocationAvailability(Long, TableLocation, Boolean, Long, String) LocationAvailabilityResponse
+        +getLocationAvailability(Long) List~LocationAvailabilityResponse~
+        +isLocationEnabled(Long, TableLocation) boolean
+    }
+
+    class ReviewService {
+        <<Service>>
+        +addReview(Long, ReviewRequest, Long, String, String) ReviewResponse
+        +getReviewsByRestaurant(Long) List~ReviewResponse~
+        +getReviewByReservationId(Long) Optional~ReviewResponse~
+    }
+
+    class GeocodingService {
+        <<Service>>
+        +geocodeAddress(String) GeoLocation
+    }
+
+    class ReservationServiceClient {
+        <<Service>>
+        +getReservationById(Long, String) ReservationDTO
+    }
+
+    class RestaurantController {
+        <<RestController>>
+        +createRestaurant() ResponseEntity
+        +createRestaurantAsAdmin() ResponseEntity
+        +getAllRestaurants() ResponseEntity
+        +getRestaurantById() ResponseEntity
+        +getMyRestaurants() ResponseEntity
+        +updateRestaurant() ResponseEntity
+        +updateRestaurantHours() ResponseEntity
+        +deleteRestaurant() ResponseEntity
+        +addTable() ResponseEntity
+        +updateTable() ResponseEntity
+        +deleteTable() ResponseEntity
+        +getRestaurantTables() ResponseEntity
+        +getAvailableTimeSlots() ResponseEntity
+        +updateTableAvailability() ResponseEntity
+        +toggleLocationAvailability() ResponseEntity
+        +getLocationAvailability() ResponseEntity
+        +uploadImage() ResponseEntity
+    }
+
+    class ReviewController {
+        <<RestController>>
+        +addReview() ResponseEntity
+        +getReviews() ResponseEntity
+        +getReviewByReservation() ResponseEntity
+    }
+
+    class JwtService {
+        <<Service>>
+        +extractEmail(String) String
+        +extractUserId(String) Long
+        +extractRole(String) String
+        +extractFirstName(String) String
+        +extractLastName(String) String
+        +isTokenValid(String) boolean
+    }
+
+    class JwtAuthenticationFilter {
+        <<Component>>
+        #doFilterInternal(request, response, chain) void
+    }
+
+    class SecurityConfig {
+        <<Configuration>>
+        +securityFilterChain(HttpSecurity) SecurityFilterChain
+    }
+
+    class CorsConfig {
+        <<Configuration>>
+        +corsConfigurationSource() CorsConfigurationSource
+    }
+
+    class WebConfig {
+        <<Configuration>>
+        +addResourceHandlers(ResourceHandlerRegistry) void
+    }
+
+    class SecurityUtils {
+        <<Component>>
+        +getCurrentUserId() Long
+        +getCurrentUserRole() String
+        +getCurrentUserFirstName() String
+        +getCurrentUserLastName() String
+    }
+
+    class GlobalExceptionHandler {
+        <<RestControllerAdvice>>
+        +handleUnauthorizedException() ResponseEntity
+        +handleRuntimeException() ResponseEntity
+        +handleValidationExceptions() ResponseEntity
+    }
+
+    RestaurantController --> RestaurantService
+    RestaurantController --> SecurityUtils
+    ReviewController --> ReviewService
+    ReviewController --> SecurityUtils
+    RestaurantService --> RestaurantRepository
+    RestaurantService --> RestaurantTableRepository
+    RestaurantService --> LocationAvailabilityRepository
+    RestaurantService --> ReviewRepository
+    RestaurantService --> GeocodingService
+    ReviewService --> ReviewRepository
+    ReviewService --> RestaurantRepository
+    ReviewService --> ReservationServiceClient
+    RestaurantRepository ..> Restaurant
+    RestaurantTableRepository ..> RestaurantTable
+    LocationAvailabilityRepository ..> LocationAvailability
+    ReviewRepository ..> Review
+    Restaurant "1" --o "n" RestaurantTable
+    Restaurant "1" --o "n" LocationAvailability
+    Restaurant "1" --o "n" Review
+    JwtAuthenticationFilter --> JwtService
+    SecurityConfig --> JwtAuthenticationFilter
+    SecurityConfig --> CorsConfig
+    RestaurantController ..> GlobalExceptionHandler : throws exceptions
+    ReviewController ..> GlobalExceptionHandler : throws exceptions
