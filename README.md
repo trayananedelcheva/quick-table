@@ -122,7 +122,7 @@ quick-table/
 - PostgreSQL 14+
 - Node.js 18+
 
-### Бази данни
+### Стъпка 1 — Създай базите данни
 
 ```sql
 CREATE DATABASE quicktable_users;
@@ -130,69 +130,96 @@ CREATE DATABASE quicktable_restaurants;
 CREATE DATABASE quicktable_reservations_v2;
 ```
 
-### Environment variables
+### Стъпка 2 — Конфигурирай environment variables
 
-Всеки Spring Boot сервиз изисква `.env` файл или системни променливи:
-
-```
-DB_USERNAME=postgres
-DB_PASSWORD=your_password
-JWT_SECRET=your_jwt_secret
-```
-
-Notification service изисква:
-
-```
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=465
-SMTP_SECURE=true
-SMTP_USER=your@gmail.com
-SMTP_PASS=your_app_password
-```
-
-### Стартиране на backend сервизите
+Копирай `.env.example` като `.env` за всеки сервиз и попълни стойностите:
 
 ```bash
-# Всеки в отделен терминал
-cd user-service && mvn spring-boot:run           # port 8081
-cd restaurant-service && mvn spring-boot:run     # port 8082
-cd reservation-service-v2 && mvn spring-boot:run # port 8085
+# Spring Boot сервизи (user-service, restaurant-service, reservation-service-v2)
+DB_USERNAME=postgres
+DB_PASSWORD=your_password
+JWT_SECRET=your_jwt_secret_min_32_chars
 
-# Notification service
-cd nodejs-notification-service && npm install && npm run dev  # port 3001
+# Notification service (nodejs-notification-service)
+DB_USER=postgres
+DB_PASSWORD=your_password
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=quicktable_notifications_node
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=465
+SMTP_USER=your@gmail.com
+SMTP_PASSWORD=your_gmail_app_password
+PORT=3001
 ```
 
-### Създаване на първи SYSTEM_ADMIN потребител
+### Стъпка 3 — Стартирай сервизите (в тази последователност)
 
-След като `user-service` е стартиран и е създал таблиците, изпълни скрипта:
+Отвори отделен терминал за всеки сервиз:
+
+```bash
+# 1. Първо — User Service (създава таблиците в quicktable_users)
+cd user-service
+mvn spring-boot:run
+# Изчакай докато видиш: Started UserServiceApplication
+
+# 2. Restaurant Service (създава таблиците в quicktable_restaurants)
+cd restaurant-service
+mvn spring-boot:run
+# Изчакай докато видиш: Started RestaurantServiceApplication
+
+# 3. Reservation Service (създава таблиците в quicktable_reservations_v2)
+cd reservation-service-v2
+mvn spring-boot:run
+# Изчакай докато видиш: Started ReservationServiceV2Application
+
+# 4. Notification Service
+cd nodejs-notification-service
+npm install
+npm run dev
+# Изчакай докато видиш: Server running on port 3001
+```
+
+### Стъпка 4 — Създай първи SYSTEM_ADMIN потребител
+
+След като `user-service` е стартирал напълно:
 
 ```bash
 psql -U postgres -d quicktable_users -f database/create-admin-only.sql
 ```
 
-Това създава системен администратор с:
+Credentials:
 - **Имейл:** `admin@quicktable.com`
 - **Парола:** `admin123`
 
 > ⚠️ Смени паролата след първи вход.
 
-### Стартиране на frontend
+### Стъпка 5 — Стартирай frontend
 
 ```bash
 cd quicktable-ui
 npm install
-npm run dev   # http://localhost:5173
+npm run dev
 ```
+
+### Стъпка 6 — Отвори приложението в браузъра
+
+```
+http://localhost:5173
+```
+
+Влез с admin credentials → системата те пренасочва автоматично към административния панел.
+
+| Страница | URL |
+|----------|-----|
+| Приложение | http://localhost:5173 |
+| Swagger — User Service | http://localhost:8081/swagger-ui/index.html |
+| Swagger — Restaurant Service | http://localhost:8082/swagger-ui/index.html |
+| Swagger — Reservation Service | http://localhost:8085/swagger-ui/index.html |
 
 ---
 
 ## API документация (Swagger UI)
-
-| Сервиз | URL |
-|--------|-----|
-| User Service | http://localhost:8081/swagger-ui/index.html |
-| Restaurant Service | http://localhost:8082/swagger-ui/index.html |
-| Reservation Service | http://localhost:8085/swagger-ui/index.html |
 
 Всеки endpoint е анотиран с `@Operation` и групиран по роля. JWT автентикация се въвежда чрез бутона "Authorize".
 
