@@ -210,18 +210,17 @@ http://localhost:5173
 
 Влез с admin credentials → системата те пренасочва автоматично към административния панел.
 
-| Страница | URL |
-|----------|-----|
-| Приложение | http://localhost:5173 |
-| Swagger — User Service | http://localhost:8081/swagger-ui/index.html |
-| Swagger — Restaurant Service | http://localhost:8082/swagger-ui/index.html |
-| Swagger — Reservation Service | http://localhost:8085/swagger-ui/index.html |
-
 ---
 
 ## API документация (Swagger UI)
 
 Всеки endpoint е анотиран с `@Operation` и групиран по роля. JWT автентикация се въвежда чрез бутона "Authorize".
+
+| Сервиз | URL |
+|--------|-----|
+| User Service | http://localhost:8081/swagger-ui/index.html |
+| Restaurant Service | http://localhost:8082/swagger-ui/index.html |
+| Reservation Service | http://localhost:8085/swagger-ui/index.html |
 
 ---
 
