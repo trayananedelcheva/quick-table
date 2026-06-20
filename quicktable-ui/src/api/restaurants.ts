@@ -120,6 +120,7 @@ export const updateRestaurant = async (
 export const deleteRestaurant = async (token: string, id: number): Promise<void> => {
   await axios.delete(`${RESTAURANT_API}/restaurants/${id}`, {
     headers: { Authorization: `Bearer ${token}` },
+    params: { permanent: true },
   });
 };
 
@@ -164,9 +165,9 @@ export const updateTableAvailability = async (
   return res.data;
 };
 
-export const getLocationAvailability = async (token: string, id: number): Promise<LocationAvailability[]> => {
+export const getLocationAvailability = async (token: string | undefined, id: number): Promise<LocationAvailability[]> => {
   const res = await axios.get(`${RESTAURANT_API}/restaurants/${id}/locations`, {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
   });
   return res.data;
 };

@@ -456,7 +456,7 @@ public class ReservationService {
     private void sendCompletionEmail(Reservation reservation) {
         try {
             String restaurantName = getRestaurantName(reservation.getRestaurantId());
-            String reviewUrl = baseUrl + "/review/" + reservation.getId();
+            String reviewUrl = baseUrl + "/leave-review/" + reservation.getId();
 
             notificationService.sendEmail(NotificationData.builder()
                     .type(NotificationType.RESERVATION_COMPLETED)

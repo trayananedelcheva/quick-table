@@ -10,7 +10,7 @@ import EmailIcon from '@mui/icons-material/Email';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { getAllRestaurants, getAvailableTimeSlots } from '../api/restaurants';
+import { getAllRestaurants, getAvailableTimeSlots, getLocationAvailability } from '../api/restaurants';
 import type { RestaurantResponse } from '../api/restaurants';
 import { createReservation } from '../api/reservations';
 import { getReviews } from '../api/reviews';
@@ -29,8 +29,7 @@ interface ReservationLocationState {
 
 const DEFAULT_IMAGE = 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=80';
 
-const LOCATIONS = [
-  { value: '', label: 'Без предпочитание' },
+const ALL_LOCATIONS = [
   { value: 'INSIDE', label: 'Вътре' },
   { value: 'SUMMER_GARDEN', label: 'Лятна градина' },
   { value: 'WINTER_GARDEN', label: 'Зимна градина' },
@@ -38,13 +37,15 @@ const LOCATIONS = [
 
 const ReservationPage: React.FC = () => {
   const { restaurantId } = useParams<{ restaurantId: string }>();
-  const { token } = useAuth();
+  const { token, user } = useAuth();
+  const canReserve = !user || user.role === 'CLIENT';
   const navigate = useNavigate();
   const location = useLocation();
   const savedState = location.state as ReservationLocationState;
 
   const [restaurant, setRestaurant] = useState<RestaurantResponse | null>(null);
   const [reviews, setReviews] = useState<ReviewResponse[]>([]);
+  const [activeLocations, setActiveLocations] = useState<string[]>([]);
   const [date, setDate] = useState(savedState?.date || '');
   const [guests, setGuests] = useState(savedState?.guests || 2);
   const [location2, setLocation2] = useState(savedState?.location2 || '');
@@ -62,6 +63,9 @@ const ReservationPage: React.FC = () => {
       setRestaurant(r || null);
     });
     getReviews(Number(restaurantId)).then(setReviews).catch(() => {});
+    getLocationAvailability(token || undefined, Number(restaurantId))
+      .then(locs => setActiveLocations(locs.filter(l => l.enabled).map(l => l.location)))
+      .catch(() => setActiveLocations(['INSIDE', 'SUMMER_GARDEN', 'WINTER_GARDEN']));
   }, [restaurantId, token]);
 
   const handleLoadSlots = async () => {
@@ -204,6 +208,7 @@ const ReservationPage: React.FC = () => {
           </Box>
 
           {/* Дясно — форма за резервация */}
+          {canReserve && (
           <Paper elevation={3} sx={{ width: 380, flexShrink: 0, p: 4 }}>
             <Typography variant="h6" sx={{ fontWeight: 700, textAlign: 'center', mb: 0.5 }}>
               НАПРАВЕТЕ
@@ -247,7 +252,8 @@ const ReservationPage: React.FC = () => {
                 value={location2}
                 onChange={e => setLocation2(e.target.value)}
               >
-                {LOCATIONS.map(l => (
+                <MenuItem value="">Без предпочитание</MenuItem>
+                {ALL_LOCATIONS.filter(l => activeLocations.includes(l.value)).map(l => (
                   <MenuItem key={l.value} value={l.value}>{l.label}</MenuItem>
                 ))}
               </TextField>
@@ -326,6 +332,7 @@ const ReservationPage: React.FC = () => {
               )}
             </Box>
           </Paper>
+          )}
         </Box>
       </Container>
     </>

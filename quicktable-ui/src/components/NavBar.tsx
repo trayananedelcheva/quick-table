@@ -86,7 +86,12 @@ const NavBar: React.FC = () => {
               {navBtn('Резервации', '/admin/reservations')}
             </>
           )}
-          {user?.role === 'SYSTEM_ADMIN' && navBtn('Потребители', '/admin/users')}
+          {user?.role === 'SYSTEM_ADMIN' && (
+            <>
+              {navBtn('Потребители', '/admin/users')}
+              {navBtn('Резервации', '/admin/reservations-all')}
+            </>
+          )}
 
           {user && (
             <>

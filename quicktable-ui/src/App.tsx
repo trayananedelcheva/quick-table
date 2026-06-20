@@ -11,6 +11,8 @@ import MyReservationsPage from './pages/MyReservationsPage';
 import AdminRestaurantPage from './pages/AdminRestaurantPage';
 import AdminReservationsPage from './pages/AdminReservationsPage';
 import AdminUsersPage from './pages/AdminUsersPage';
+import AdminAllReservationsPage from './pages/AdminAllReservationsPage';
+import LeaveReviewPage from './pages/LeaveReviewPage';
 import ProfilePage from './pages/ProfilePage';
 import SettingsPage from './pages/SettingsPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
@@ -65,9 +67,11 @@ const AppRoutes: React.FC = () => (
     <Route path="/restaurants" element={<RestaurantsPage />} />
     <Route path="/reserve/:restaurantId" element={<ReservationPage />} />
     <Route path="/my-reservations" element={<RoleRoute role="CLIENT"><MyReservationsPage /></RoleRoute>} />
+    <Route path="/leave-review/:reservationId" element={<ProtectedRoute><LeaveReviewPage /></ProtectedRoute>} />
     <Route path="/admin/restaurant" element={<RoleRoute role="RESTAURANT_ADMIN"><AdminRestaurantPage /></RoleRoute>} />
     <Route path="/admin/reservations" element={<RoleRoute role="RESTAURANT_ADMIN"><AdminReservationsPage /></RoleRoute>} />
     <Route path="/admin/users" element={<RoleRoute role="SYSTEM_ADMIN"><AdminUsersPage /></RoleRoute>} />
+    <Route path="/admin/reservations-all" element={<RoleRoute role="SYSTEM_ADMIN"><AdminAllReservationsPage /></RoleRoute>} />
     <Route path="*" element={<Navigate to="/" />} />
   </Routes>
 );

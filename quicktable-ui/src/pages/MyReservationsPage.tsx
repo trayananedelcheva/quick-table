@@ -181,12 +181,12 @@ const MyReservationsPage: React.FC = () => {
 
       {/* Диалог за отзив */}
       <Dialog open={reviewDialog.open} onClose={() => setReviewDialog({ open: false, reservation: null })} maxWidth="xs" fullWidth>
-        <DialogTitle>Отзив за {reviewDialog.reservation?.restaurantName}</DialogTitle>
+        <DialogTitle sx={{ color: 'text.primary' }}>Отзив за {reviewDialog.reservation?.restaurantName}</DialogTitle>
         <DialogContent>
           {reviewError && <Alert severity="error" sx={{ mb: 2 }}>{reviewError}</Alert>}
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
             <Box>
-              <Typography variant="body2" sx={{ mb: 0.5 }}>Оценка</Typography>
+              <Typography variant="body2" sx={{ mb: 0.5, color: 'text.primary' }}>Оценка</Typography>
               <Rating value={rating} onChange={(_, v) => setRating(v ?? 1)} />
             </Box>
             <TextField

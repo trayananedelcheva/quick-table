@@ -60,7 +60,7 @@ scheduler:
     cron: "0 0 10 * * *"
 
 app:
-  base-url: http://localhost:3000
+  base-url: http://localhost:5173
 
 logging:
   level:

@@ -237,7 +237,10 @@ public class RestaurantService {
         // Първо изтрий масите (заради foreign key constraint)
         restaurant.getTables().clear();
         restaurantRepository.save(restaurant);
-        
+
+        // Изтрий ревютата
+        reviewRepository.deleteAll(reviewRepository.findByRestaurantIdOrderByCreatedAtDesc(id));
+
         // След това изтрий ресторанта
         restaurantRepository.deleteById(id);
         log.info("Hard delete на ресторант {} от {} потребител {} - окончателно изтрит!", 

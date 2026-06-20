@@ -77,6 +77,13 @@ export const markNoShow = async (token: string, id: number): Promise<Reservation
   return res.data;
 };
 
+export const getAllReservations = async (token: string): Promise<ReservationResponse[]> => {
+  const res = await axios.get(`${RESERVATION_API}/reservations`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return res.data;
+};
+
 export const cancelReservation = async (token: string, id: number): Promise<ReservationResponse> => {
   const res = await axios.delete(`${RESERVATION_API}/reservations/${id}`, {
     headers: { Authorization: `Bearer ${token}` },
