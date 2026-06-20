@@ -43,3 +43,19 @@ Thumbs.db
 # Environment variables
 .env
 **/.env
+
+# Exclude from remote
+docs/
+testing/
+database/backup-2026-05-05/
+database/add-unique-table-constraint.sql
+database/check-admin.sql
+database/clear-data.sql
+database/database-setup.sql
+database/fix-categories.sql
+database/fix-category-cascade.sql
+database/fix-duplicate-tables.sql
+database/migrate-category-to-location.sql
+database/migrate-to-categories.sql
+database/sample-data.sql
+database/README.md
