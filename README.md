@@ -162,6 +162,20 @@ cd reservation-service-v2 && mvn spring-boot:run # port 8085
 cd nodejs-notification-service && npm install && npm run dev  # port 3001
 ```
 
+### Създаване на първи SYSTEM_ADMIN потребител
+
+След като `user-service` е стартиран и е създал таблиците, изпълни скрипта:
+
+```bash
+psql -U postgres -d quicktable_users -f database/create-admin-only.sql
+```
+
+Това създава системен администратор с:
+- **Имейл:** `admin@quicktable.com`
+- **Парола:** `admin123`
+
+> ⚠️ Смени паролата след първи вход.
+
 ### Стартиране на frontend
 
 ```bash
